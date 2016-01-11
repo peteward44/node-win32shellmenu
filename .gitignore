@@ -1,0 +1,5 @@
+/node/node_modules
+/clrdll/*.suo
+/clrdll/bin
+/clrdll/obj
+/node/dll/*.pdb
