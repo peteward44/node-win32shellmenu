@@ -34,17 +34,5 @@ describe('register', function () {
 			done();
 		} );
 	});
-	
-	// it('unregister', function ( done ) {
-		// var dllname = path.join( __dirname, 'mydll.dll' );
-
-		// explorerMenu.unregister( dllname, function( err, stdo, stde ) {
-			// if ( err ) {
-				// console.error( err );
-			// }
-			// assert.equal( !err, true, "No error occurred" );
-			// done();
-		// } );
-	// });
 });
 
