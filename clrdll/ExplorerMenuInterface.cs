@@ -77,6 +77,20 @@ namespace windowsexplorermenu_clr
 		}
 
 
+		private static void AddAttribute( dynamic targetType, Type attributeType, params object[] constructorParams )
+		{
+			Type[] ctorParams = new Type[ constructorParams.Length ];
+			int index = 0;
+			foreach ( object o in constructorParams )
+			{
+				ctorParams[ index++ ] = o.GetType();
+			}
+			ConstructorInfo classCtorInfo = attributeType.GetConstructor( ctorParams );
+			CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, constructorParams );
+			targetType.SetCustomAttribute( myCABuilder );
+		}
+
+
 		public async Task<object> Create( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
@@ -95,20 +109,24 @@ namespace windowsexplorermenu_clr
 
 			TypeBuilder myTypeBuilder = myModBuilder.DefineType( "MyType", TypeAttributes.Public, typeof( MenuExtension ) );
 
-			Type[] ctorParams = new Type[] { typeof( bool ) };
-			ConstructorInfo classCtorInfo = typeof( ComVisibleAttribute ).GetConstructor( ctorParams );
-			CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, new object[] { true } );
-			myTypeBuilder.SetCustomAttribute( myCABuilder );
+			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
+			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), AssociationType.FileExtension, new string[] { ".txt" } );
+			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" );
 
-			Type[] ctorParams2 = new Type[] { AssociationType.FileExtension.GetType(), typeof( string[] ) };
-			ConstructorInfo classCtorInfo2 = typeof( COMServerAssociationAttribute ).GetConstructor( ctorParams2 );
-			CustomAttributeBuilder myCABuilder2 = new CustomAttributeBuilder( classCtorInfo2, new object[] { AssociationType.FileExtension, new string[] { ".txt" } } );
-			myTypeBuilder.SetCustomAttribute( myCABuilder2 );
+			//Type[] ctorParams = new Type[] { typeof( bool ) };
+			//ConstructorInfo classCtorInfo = typeof( ComVisibleAttribute ).GetConstructor( ctorParams );
+			//CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, new object[] { true } );
+			//myTypeBuilder.SetCustomAttribute( myCABuilder );
 
-			Type[] ctorParams3 = new Type[] { typeof( string ) };
-			ConstructorInfo classCtorInfo3 = typeof( GuidAttribute ).GetConstructor( ctorParams3 );
-			CustomAttributeBuilder myCABuilder3 = new CustomAttributeBuilder( classCtorInfo3, new object[] { "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" } );
-			myAsmBuilder.SetCustomAttribute( myCABuilder3 );
+			//Type[] ctorParams2 = new Type[] { AssociationType.FileExtension.GetType(), typeof( string[] ) };
+			//ConstructorInfo classCtorInfo2 = typeof( COMServerAssociationAttribute ).GetConstructor( ctorParams2 );
+			//CustomAttributeBuilder myCABuilder2 = new CustomAttributeBuilder( classCtorInfo2, new object[] { AssociationType.FileExtension, new string[] { ".txt" } } );
+			//myTypeBuilder.SetCustomAttribute( myCABuilder2 );
+
+			//Type[] ctorParams3 = new Type[] { typeof( string ) };
+			//ConstructorInfo classCtorInfo3 = typeof( GuidAttribute ).GetConstructor( ctorParams3 );
+			//CustomAttributeBuilder myCABuilder3 = new CustomAttributeBuilder( classCtorInfo3, new object[] { "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" } );
+			//myAsmBuilder.SetCustomAttribute( myCABuilder3 );
 
 
 			myTypeBuilder.CreateType();
