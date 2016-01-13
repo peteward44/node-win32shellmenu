@@ -20,26 +20,6 @@ using Microsoft.Win32;
 
 namespace windowsexplorermenu_clr
 {
-	public class DateLastUpdated : Attribute
-	{
-		private string dateUpdated;
-		public string DateUpdated
-		{
-			get
-			{
-				return dateUpdated;
-			}
-		}
-
-		public DateLastUpdated( string theDate )
-		{
-			this.dateUpdated = theDate;
-		}
-
-	}
-
-
-
 	//[ComVisible( true )]
 	//[COMServerAssociation( AssociationType.FileExtension, ".txt" )]
 	public class MenuExtension : SharpContextMenu
@@ -74,50 +54,11 @@ namespace windowsexplorermenu_clr
 		private void OnClick()
 		{
 			MessageBox.Show( "Test worked" );
-			////  Builder for the output.
-			//var builder = new StringBuilder();
-
-			////  Go through each file.
-			//foreach ( var filePath in SelectedItemPaths )
-			//{
-			//	//  Count the lines.
-			//	builder.AppendLine( string.Format( "{0} - {1} Lines",
-			//	  System.IO.Path.GetFileName( filePath ), System.IO.File.ReadAllLines( filePath ).Length ) );
-			//}
-
-			////  Show the ouput.
-			//MessageBox.Show( builder.ToString() );
 		}
 	}
 
 
-	////[ DateLastUpdated( "33-11-3333" ) ]
-	//public class Class1
-	//{
-	//	public Class1()
-	//	{
-	//	}
-
-	//	public Class1( string s )
-	//	{
-	//	}
-
-	//	public async Task<object> TestMethod( dynamic input )
-	//	{
-	//		Test();
-	//		return "";
-	//	}
-
-	//	public void Test()
-	//	{
-	//		DateLastUpdated MyAttribute = (DateLastUpdated)Attribute.GetCustomAttribute( this.GetType(), typeof( DateLastUpdated ) );
-
-	//		MessageBox.Show( "Test works: " + ( MyAttribute != null ? MyAttribute.DateUpdated : "" ) );
-	//	}
-	//}
-
-
-	public class CreateComAssembly
+	public class ExplorerMenuInterface
 	{
 
 		public static byte[] CreateKeyPair( string containerName, int keySize )
@@ -130,10 +71,6 @@ namespace windowsexplorermenu_clr
 			CspParameters parms = new CspParameters();
 			parms.KeyContainerName = containerName;
 			parms.KeyNumber = 2;
-			//parms.Flags = CspProviderFlags.UseUserProtectedKey;
-			//var password = new System.Security.SecureString();
-			//password.AppendChar( 'p' );
-			//parms.KeyPassword = password;
 			RSACryptoServiceProvider provider = new RSACryptoServiceProvider( keySize, parms );
 			byte[] array = provider.ExportCspBlob( !provider.PublicOnly );
 			return array;
@@ -148,7 +85,6 @@ namespace windowsexplorermenu_clr
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
 			myAsmName.CultureInfo = new System.Globalization.CultureInfo( "en-US" );
 			myAsmName.KeyPair = new StrongNameKeyPair( CreateKeyPair( System.IO.Path.GetFileNameWithoutExtension( dllPath ), 1024 ) );
-		//	myAsmName.KeyPair = new StrongNameKeyPair( System.IO.File.Open( System.IO.Path.Combine( System.IO.Path.GetDirectoryName( System.Reflection.Assembly.GetExecutingAssembly().Location ), "mysnk.snk" ), System.IO.FileMode.Open ) );
 			myAsmName.Flags = AssemblyNameFlags.PublicKey;
 			myAsmName.VersionCompatibility = AssemblyVersionCompatibility.SameProcess;
 			myAsmName.HashAlgorithm = AssemblyHashAlgorithm.SHA1;
@@ -158,17 +94,7 @@ namespace windowsexplorermenu_clr
 			ModuleBuilder myModBuilder = myAsmBuilder.DefineDynamicModule( "MyModule", System.IO.Path.GetFileName( dllPath ) );
 
 			TypeBuilder myTypeBuilder = myModBuilder.DefineType( "MyType", TypeAttributes.Public, typeof( MenuExtension ) );
-			 //TypeAttributes.Public
-			 //   | TypeAttributes.Class
-			 //   | TypeAttributes.AutoClass
-			 //   | TypeAttributes.AnsiClass
-			 //   | TypeAttributes.ExplicitLayout,
-			 //   typeof(SomeOtherNamespace.MyBase));
 
-			//Type[] ctorParams = new Type[] { typeof( string ) };
-			//ConstructorInfo classCtorInfo = typeof( DateLastUpdated ).GetConstructor( ctorParams );
-			//CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, new object[] { "Custom attribute worked!" } );
-			//myTypeBuilder.SetCustomAttribute( myCABuilder );
 			Type[] ctorParams = new Type[] { typeof( bool ) };
 			ConstructorInfo classCtorInfo = typeof( ComVisibleAttribute ).GetConstructor( ctorParams );
 			CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, new object[] { true } );

@@ -13,7 +13,7 @@ var ourSrm = "srm.exe"; // path.join( __dirname, 'dll', 'srm.exe' );
 function create( dllname, callback ) {
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.CreateComAssembly',
+		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
 		methodName: 'Create'
 	});
 	
@@ -38,7 +38,7 @@ function register( dllname, callback ) {
 	// return exec( ourSrm + ' install ' + path.basename( dll ) + ' -codebase', { cwd: path.dirname( dll ) }, callback );
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.CreateComAssembly',
+		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
 		methodName: 'Register'
 	});
 	
@@ -60,7 +60,7 @@ function unregister( dllname, callback ) {
 	
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.CreateComAssembly',
+		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
 		methodName: 'Unregister'
 	});
 	

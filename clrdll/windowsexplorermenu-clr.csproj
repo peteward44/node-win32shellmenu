@@ -52,8 +52,6 @@
   <ItemGroup>
     <Compile Include="Class1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ShellRegister.cs" />
-    <Compile Include="ShellRegisterInterop.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="mysnk.snk" />
