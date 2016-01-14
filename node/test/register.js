@@ -10,23 +10,10 @@ describe('register', function () {
 	
 	this.timeout( 5 * 60 * 1000 );
 	
-	it('create', function ( done ) {
-		var dllname = path.join( __dirname, 'mydll.dll' );
-		explorerMenu.create( dllname, function( err ) {
-			if ( err ) {
-				console.error( err );
-			}
-			assert.equal( !err, true, "No error occurred" );
-			assert.equal( fs.existsSync( dllname ), true, "DLL successfully created" );
-			
-			done();
-		} );
-	});
-	
 	it('register', function ( done ) {
 		var dllname = path.join( __dirname, 'mydll.dll' );
 
-		explorerMenu.register( dllname, function( err, stdo, stde ) {
+		explorerMenu.register( dllname, { association: 'fileextension', associations: [ ".txt" ] }, function( err ) {
 			if ( err ) {
 				console.error( err );
 			}

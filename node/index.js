@@ -7,46 +7,23 @@ var exec = require( 'child_process' ).exec;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
 var ourSharpDllPath = path.join( __dirname, 'dll', 'SharpShell.dll' );
-var ourSrm = "srm.exe"; // path.join( __dirname, 'dll', 'srm.exe' );
 
 
-function create( dllname, callback ) {
-	var clrMethod = edge.func({
-		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
-		methodName: 'Create'
-	});
-	
-	var dll = path.normalize( path.resolve( dllname ) );
-	var params = {
-		dllpath: dll
-	};
-	
-	clrMethod( params, function( err ) {
-		fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
-		fs.copySync( ourSharpDllPath, path.join( path.dirname( dll ), path.basename( ourSharpDllPath ) ) );
-		callback( err );
-	} );
-}
-
-
-exports.create = create;
-
-
-function register( dllname, callback ) {
-	// var dll = path.normalize( path.resolve( dllname ) );
-	// return exec( ourSrm + ' install ' + path.basename( dll ) + ' -codebase', { cwd: path.dirname( dll ) }, callback );
+function register( dllname, options, callback ) {
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
 		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
 		methodName: 'Register'
 	});
 	
-	var params = {
-		dllpath: path.normalize( path.resolve( dllname ) )
-	};
+	var dll = path.normalize( path.resolve( dllname ) );
+	options.dllpath = dll;
 	
-	clrMethod( params, function( err ) {
+	fs.ensureDirSync( path.dirname( dll ) );
+	fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
+	fs.copySync( ourSharpDllPath, path.join( path.dirname( dll ), path.basename( ourSharpDllPath ) ) );
+
+	clrMethod( options, function( err ) {
 		callback( err );
 	} );
 }

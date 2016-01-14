@@ -58,6 +58,26 @@ namespace windowsexplorermenu_clr
 	}
 
 
+	// Custom attribute to store the file association data at the assembly level.
+	public class AssociationStorageAttribute : Attribute
+	{
+		private AssociationType at;
+		public AssociationType Association
+		{
+			get
+			{
+				return at;
+			}
+		}
+
+		public AssociationStorageAttribute( AssociationType _at )
+		{
+			this.at = _at;
+		}
+
+	}
+
+
 	public class ExplorerMenuInterface
 	{
 
@@ -91,10 +111,39 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public async Task<object> Create( dynamic input )
+		private AssociationType StringNameToAssociationType( string name )
 		{
-			string dllPath = (string)input.dllpath;
+			switch ( name )
+			{
+				default:
+				case "all":
+					return AssociationType.AllFiles;
+				case "class":
+					return AssociationType.Class;
+				case "classofextension":
+					return AssociationType.ClassOfExtension;
+				case "directory":
+					return AssociationType.Directory;
+				case "drive":
+					return AssociationType.Drive;
+				case "fileextension":
+					return AssociationType.FileExtension;
+				case "none":
+					return AssociationType.None;
+				case "unknown":
+					return AssociationType.UnknownFiles;
+			}
+		}
 
+
+		public static bool IsProperty( dynamic settings, string name )
+		{
+			return settings.GetType().GetProperty( name ) != null;
+		}
+
+
+		public void Create( string dllPath, AssociationType association, string[] associations )
+		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
 			myAsmName.CultureInfo = new System.Globalization.CultureInfo( "en-US" );
@@ -106,35 +155,17 @@ namespace windowsexplorermenu_clr
 
 			AssemblyBuilder myAsmBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly( myAsmName, AssemblyBuilderAccess.Save, System.IO.Path.GetDirectoryName( dllPath ) );
 			ModuleBuilder myModBuilder = myAsmBuilder.DefineDynamicModule( "MyModule", System.IO.Path.GetFileName( dllPath ) );
-
 			TypeBuilder myTypeBuilder = myModBuilder.DefineType( "MyType", TypeAttributes.Public, typeof( MenuExtension ) );
 
 			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
-			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), AssociationType.FileExtension, new string[] { ".txt" } );
+			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), association, associations );
 			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" );
-
-			//Type[] ctorParams = new Type[] { typeof( bool ) };
-			//ConstructorInfo classCtorInfo = typeof( ComVisibleAttribute ).GetConstructor( ctorParams );
-			//CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, new object[] { true } );
-			//myTypeBuilder.SetCustomAttribute( myCABuilder );
-
-			//Type[] ctorParams2 = new Type[] { AssociationType.FileExtension.GetType(), typeof( string[] ) };
-			//ConstructorInfo classCtorInfo2 = typeof( COMServerAssociationAttribute ).GetConstructor( ctorParams2 );
-			//CustomAttributeBuilder myCABuilder2 = new CustomAttributeBuilder( classCtorInfo2, new object[] { AssociationType.FileExtension, new string[] { ".txt" } } );
-			//myTypeBuilder.SetCustomAttribute( myCABuilder2 );
-
-			//Type[] ctorParams3 = new Type[] { typeof( string ) };
-			//ConstructorInfo classCtorInfo3 = typeof( GuidAttribute ).GetConstructor( ctorParams3 );
-			//CustomAttributeBuilder myCABuilder3 = new CustomAttributeBuilder( classCtorInfo3, new object[] { "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" } );
-			//myAsmBuilder.SetCustomAttribute( myCABuilder3 );
-
+			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), association );
 
 			myTypeBuilder.CreateType();
 			myModBuilder.CreateGlobalFunctions();
 
 			myAsmBuilder.Save( System.IO.Path.GetFileName( dllPath ) );
-
-			return "";
 		}
 
 
@@ -151,58 +182,8 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public enum RightClickContextMenuOptions
+		static string GetContextMenuOptionsBaseKey( AssociationType association )
 		{
-			AllFileSystemObjects,
-			Files,
-			Folders,
-			ImageFiles,
-			VideoFiles,
-			DesktopBackground,
-			Drive,
-			Printers,
-		}
-
-
-		static string GetContextMenuOptionsBaseKey( RightClickContextMenuOptions contextMenu )
-		{
-			switch ( contextMenu )
-			{
-				case RightClickContextMenuOptions.AllFileSystemObjects:
-					return @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandler";
-				case RightClickContextMenuOptions.Files:
-					return @"*\shellex\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.Folders:
-					return @"Folder\shellex\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.ImageFiles:
-					return @"SystemFileAssociations\image\ShellEx\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.VideoFiles:
-					return @"SystemFileAssociations\video\ShellEx\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.DesktopBackground:
-					return @"DesktopBackground\shellex\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.Drive:
-					return @"Drive\shellex\ContextMenuHandlers\";
-				case RightClickContextMenuOptions.Printers:
-					return @"Printers\shellex\ContextMenuHandlers\";
-				default:
-					System.Diagnostics.Debug.Assert( false );
-					return "";
-			}
-		}
-
-
-		public async Task<object> Register( dynamic input )
-		{
-			string dllPath = (string)input.dllpath;
-			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
-			RegistrationServices reg = new RegistrationServices();
-			Assembly assembly = Assembly.LoadFile( dllPath );
-			reg.RegisterAssembly( assembly, AssemblyRegistrationFlags.SetCodeBase );
-
-			var attribute = (GuidAttribute)assembly.GetCustomAttributes( typeof( GuidAttribute ), true )[ 0 ];
-			var clsid = "{" + attribute.Value + "}";
-			var programName = assembly.GetName().Name;
-
 			// See what this is about: @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandlers" 
 			// Compressed folders: HKEY_CLASSES_ROOT\CompressedFolder\ShellEx\ContextMenuHandlers
 			// Desktop background: HKEY_CLASSES_ROOT\DesktopBackground\shellex\ContextMenuHandlers
@@ -218,6 +199,51 @@ namespace windowsexplorermenu_clr
 			// Images: HKEY_CLASSES_ROOT\SystemFileAssociations\image\ShellEx\ContextMenuHandlers
 			// Videos: HKEY_CLASSES_ROOT\SystemFileAssociations\video\ShellEx\ContextMenuHandlers
 
+			switch ( association )
+			{
+				default:
+				case AssociationType.AllFiles:
+					return @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandler";
+				case AssociationType.FileExtension:
+				case AssociationType.Class:
+				case AssociationType.ClassOfExtension:
+				case AssociationType.UnknownFiles:
+					return @"*\shellex\ContextMenuHandlers\";
+				case AssociationType.Directory:
+					return @"Folder\shellex\ContextMenuHandlers\";
+				//case RightClickContextMenuOptions.ImageFiles:
+				//	return @"SystemFileAssociations\image\ShellEx\ContextMenuHandlers\";
+				//case RightClickContextMenuOptions.VideoFiles:
+				//	return @"SystemFileAssociations\video\ShellEx\ContextMenuHandlers\";
+				//case RightClickContextMenuOptions.DesktopBackground:
+				//	return @"DesktopBackground\shellex\ContextMenuHandlers\";
+				case AssociationType.Drive:
+					return @"Drive\shellex\ContextMenuHandlers\";
+				//case RightClickContextMenuOptions.Printers:
+				//	return @"Printers\shellex\ContextMenuHandlers\";
+			}
+		}
+
+
+		public async Task<object> Register( dynamic input )
+		{
+			string dllPath = (string)input.dllpath;
+			//AssociationType association = AssociationType.FileExtension;
+			//string[] associationParams = new string[] { ".txt" };
+			AssociationType association = IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
+			string[] associations = IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
+
+			Create( dllPath, association, associations );
+
+			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
+			RegistrationServices reg = new RegistrationServices();
+			Assembly assembly = Assembly.LoadFile( dllPath );
+			reg.RegisterAssembly( assembly, AssemblyRegistrationFlags.SetCodeBase );
+
+			var attribute = (GuidAttribute)assembly.GetCustomAttributes( typeof( GuidAttribute ), true )[ 0 ];
+			var clsid = "{" + attribute.Value + "}";
+			var programName = assembly.GetName().Name;
+
 			RegistryKey rk = Registry.CurrentUser.OpenSubKey( @"Software\Microsoft\Windows\CurrentVersion\Explorer", true );
 			rk.SetValue( @"DesktopProcess", 1 );
 			rk.Close();
@@ -227,11 +253,9 @@ namespace windowsexplorermenu_clr
 			rk.SetValue( clsid, programName + @" Shell Extension" );
 			rk.Close();
 
-			RightClickContextMenuOptions[] contextMenuOptions = { RightClickContextMenuOptions.Files };
-
-			foreach ( RightClickContextMenuOptions contextMenu in contextMenuOptions )
+			if ( association != AssociationType.None )
 			{
-				rk = Registry.ClassesRoot.CreateSubKey( GetContextMenuOptionsBaseKey( contextMenu ) + programName );
+				rk = Registry.ClassesRoot.CreateSubKey( GetContextMenuOptionsBaseKey( association ) + programName );
 				rk.SetValue( "", clsid );
 				rk.Close();
 			}
@@ -247,20 +271,28 @@ namespace windowsexplorermenu_clr
 			Assembly assembly = Assembly.LoadFile( dllPath );
 			reg.UnregisterAssembly( assembly );
 			var programName = assembly.GetName().Name;
-
-			var attribute = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute),true)[0];
-			var clsid = "{" + attribute.Value + "}";
+			
+			var associationAttrib = (AssociationStorageAttribute)assembly.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
+			AssociationType association = associationAttrib.Association;
+			var guidAttrib = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute),true)[0];
+			var clsid = "{" + guidAttrib.Value + "}";
 
 			RegistryKey rk = Registry.LocalMachine.OpenSubKey( @"Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved", true );
-			rk.DeleteValue( clsid );
+			try
+			{
+				rk.DeleteValue( clsid );
+			}
+			catch ( Exception ) { }
 			rk.Close();
 
-			RightClickContextMenuOptions[] contextMenuOptions = { RightClickContextMenuOptions.Files };
-
-			foreach ( RightClickContextMenuOptions contextMenu in contextMenuOptions )
+			try
 			{
-				Registry.ClassesRoot.DeleteSubKey( GetContextMenuOptionsBaseKey( contextMenu ) + programName );
+				if ( association != AssociationType.None )
+				{
+					Registry.ClassesRoot.DeleteSubKey( GetContextMenuOptionsBaseKey( association ) + programName );
+				}
 			}
+			catch ( Exception ) {}
 
 			return "";
 		}
