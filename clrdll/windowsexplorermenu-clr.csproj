@@ -36,6 +36,9 @@
     <AssemblyOriginatorKeyFile>mysnk.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="JsonFx">
+      <HintPath>.\JsonFx.dll</HintPath>
+    </Reference>
     <Reference Include="SharpShell">
       <HintPath>.\SharpShell.dll</HintPath>
     </Reference>

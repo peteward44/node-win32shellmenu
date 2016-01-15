@@ -12,8 +12,16 @@ describe('register', function () {
 	
 	it('register', function ( done ) {
 		var dllname = path.join( __dirname, 'mydll.dll' );
-
-		explorerMenu.register( dllname, { association: 'fileextension', associations: [ ".txt" ] }, function( err ) {
+		var menu = [
+			{
+				name: "Dynamic menu test - item 1"
+			},
+			{
+				name: "Dynamic menu test - item 2"
+			}
+		];
+		var options = { association: 'fileextension', associations: [ ".txt" ] };
+		explorerMenu.register( dllname, menu, options, function( err ) {
 			if ( err ) {
 				console.error( err );
 			}

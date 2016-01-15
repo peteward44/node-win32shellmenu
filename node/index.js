@@ -7,9 +7,10 @@ var exec = require( 'child_process' ).exec;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
 var ourSharpDllPath = path.join( __dirname, 'dll', 'SharpShell.dll' );
+var ourJsonFxDllPath = path.join( __dirname, 'dll', 'JsonFx.dll' );
 
 
-function register( dllname, options, callback ) {
+function register( dllname, menu, options, callback ) {
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
 		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
@@ -17,11 +18,14 @@ function register( dllname, options, callback ) {
 	});
 	
 	var dll = path.normalize( path.resolve( dllname ) );
+	// TODO: copy options object before modifying it
 	options.dllpath = dll;
+	options.menu = menu;
 	
 	fs.ensureDirSync( path.dirname( dll ) );
 	fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
 	fs.copySync( ourSharpDllPath, path.join( path.dirname( dll ), path.basename( ourSharpDllPath ) ) );
+	fs.copySync( ourJsonFxDllPath, path.join( path.dirname( dll ), path.basename( ourJsonFxDllPath ) ) );
 
 	clrMethod( options, function( err ) {
 		callback( err );

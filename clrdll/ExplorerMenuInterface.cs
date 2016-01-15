@@ -20,6 +20,15 @@ using Microsoft.Win32;
 
 namespace windowsexplorermenu_clr
 {
+
+	class Util
+	{
+		public static bool IsProperty( dynamic settings, string name )
+		{
+			return settings.GetType().GetProperty( name ) != null;
+		}
+	}
+
 	//[ComVisible( true )]
 	//[COMServerAssociation( AssociationType.FileExtension, ".txt" )]
 	public class MenuExtension : SharpContextMenu
@@ -31,21 +40,31 @@ namespace windowsexplorermenu_clr
 
 		protected override ContextMenuStrip CreateMenu()
 		{
+			//(GuidAttribute)assembly.GetCustomAttributes( typeof( GuidAttribute ), true )[ 0 ];
+			AssociationStorageAttribute storage = (AssociationStorageAttribute)Attribute.GetCustomAttribute( this.GetType(), typeof( AssociationStorageAttribute ) );
+			string menuFormatJson = storage.MenuFormat;
+
+			MessageBox.Show( "menuFormat=" + menuFormatJson );
+			var jsonReader = new JsonFx.Json.JsonReader();
+			dynamic[] menuFormatObject = jsonReader.Read<dynamic[]>( menuFormatJson );
+
+			MessageBox.Show( "menuFormatObject=" + menuFormatObject.Length );
+
 			//  Create the menu strip.
 			var menu = new ContextMenuStrip();
 
-			//  Create a 'count lines' item.
-			var itemCountLines = new ToolStripMenuItem
-			{
-				Text = "Count Lines..."
-	//			Image = Properties.Resources.CountLines
-			};
+	//		//  Create a 'count lines' item.
+	//		var itemCountLines = new ToolStripMenuItem
+	//		{
+	//			Text = "Count Lines..."
+	////			Image = Properties.Resources.CountLines
+	//		};
 
-			//  When we click, we'll count the lines.
-			itemCountLines.Click += ( sender, args ) => OnClick();
+	//		//  When we click, we'll count the lines.
+	//		itemCountLines.Click += ( sender, args ) => OnClick();
 
-			//  Add the item to the context menu.
-			menu.Items.Add( itemCountLines );
+	//		//  Add the item to the context menu.
+	//		menu.Items.Add( itemCountLines );
 
 			//  Return the menu.
 			return menu;
@@ -61,6 +80,7 @@ namespace windowsexplorermenu_clr
 	// Custom attribute to store the file association data at the assembly level.
 	public class AssociationStorageAttribute : Attribute
 	{
+		private string menuFormat;
 		private AssociationType at;
 		public AssociationType Association
 		{
@@ -69,9 +89,17 @@ namespace windowsexplorermenu_clr
 				return at;
 			}
 		}
-
-		public AssociationStorageAttribute( AssociationType _at )
+		public string MenuFormat
 		{
+			get
+			{
+				return menuFormat;
+			}
+		}
+
+		public AssociationStorageAttribute( string menuFormat, AssociationType _at )
+		{
+			this.menuFormat = menuFormat;
 			this.at = _at;
 		}
 
@@ -136,13 +164,7 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public static bool IsProperty( dynamic settings, string name )
-		{
-			return settings.GetType().GetProperty( name ) != null;
-		}
-
-
-		public void Create( string dllPath, AssociationType association, string[] associations )
+		public void Create( string dllPath, dynamic[] menuFormat, AssociationType association, string[] associations )
 		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
@@ -157,10 +179,14 @@ namespace windowsexplorermenu_clr
 			ModuleBuilder myModBuilder = myAsmBuilder.DefineDynamicModule( "MyModule", System.IO.Path.GetFileName( dllPath ) );
 			TypeBuilder myTypeBuilder = myModBuilder.DefineType( "MyType", TypeAttributes.Public, typeof( MenuExtension ) );
 
+			var menuFormatWriter = new JsonFx.Json.JsonWriter();
+			var menuFormatJson = menuFormatWriter.Write( menuFormat );
+
+			Guid guid = System.Guid.NewGuid();
 			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
 			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), association, associations );
-			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), "a64f5783-4e6d-4fd1-8ca7-aa50cdd144e6" );
-			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), association );
+			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), guid.ToString() );
+			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), menuFormatJson, association );
 
 			myTypeBuilder.CreateType();
 			myModBuilder.CreateGlobalFunctions();
@@ -228,12 +254,11 @@ namespace windowsexplorermenu_clr
 		public async Task<object> Register( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
-			//AssociationType association = AssociationType.FileExtension;
-			//string[] associationParams = new string[] { ".txt" };
-			AssociationType association = IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
-			string[] associations = IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
+			dynamic[] menuFormat = (dynamic[])input.menu;
+			AssociationType association = Util.IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
+			string[] associations = Util.IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
 
-			Create( dllPath, association, associations );
+			Create( dllPath, menuFormat, association, associations );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			RegistrationServices reg = new RegistrationServices();
