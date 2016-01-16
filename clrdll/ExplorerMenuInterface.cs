@@ -23,9 +23,31 @@ namespace windowsexplorermenu_clr
 
 	class Util
 	{
-		public static bool IsProperty( dynamic settings, string name )
+		public static bool IsProperty( dynamic expandoObject, string name )
 		{
-			return settings.GetType().GetProperty( name ) != null;
+			var exp = expandoObject as System.Dynamic.ExpandoObject;
+			if ( exp != null )
+			{
+				return exp.Any( pair => pair.Key == name );
+			}
+			else
+			{
+				return expandoObject.GetType().GetProperty( name ) != null;
+			}
+			//var prop = expandoObject.GetType().GetProperty( name ) != null;
+			//if ( prop )
+			//	return true;
+			////try {
+			////	var dic = (IDictionary<String, object>)expandoObject;
+			////	if ( dic != null )
+			////	{
+			////		return dic.ContainsKey( name );
+			////	}
+			////}
+			////catch (Exception)
+			////{
+			////}
+			//return false;
 		}
 	}
 
@@ -38,36 +60,70 @@ namespace windowsexplorermenu_clr
 			return true;
 		}
 
+		private void OnClick( dynamic item )
+		{
+			var action = Util.IsProperty( item, "action" ) ? (string)item.action : "";
+			MessageBox.Show( "Executing action: " + action );
+		}
+
+		private void AddChildren( ContextMenuStrip menu, dynamic children )
+		{
+			for ( var i=0; i<children.Length; ++i )
+			{
+				dynamic item = children[ i ];
+				JsonFx.Json.JsonWriter jw = new JsonFx.Json.JsonWriter();
+				string s = jw.Write( item );
+				MessageBox.Show( "item=" + s );
+				var name = Util.IsProperty( item, "name" ) ? (string)item.name : "New Menu Item";
+				var action = Util.IsProperty( item, "action" ) ? (string)item.action : "";
+				MessageBox.Show( "Adding action: " + action );
+
+
+				// TODO: embed image into assembly and reference that
+				var menuItem = new ToolStripMenuItem( name );
+				menuItem.Click += ( sender, args ) => OnClick( item );
+				menu.Items.Add( menuItem );
+			}
+		}
+
 		protected override ContextMenuStrip CreateMenu()
 		{
-			//(GuidAttribute)assembly.GetCustomAttributes( typeof( GuidAttribute ), true )[ 0 ];
-			AssociationStorageAttribute storage = (AssociationStorageAttribute)Attribute.GetCustomAttribute( this.GetType(), typeof( AssociationStorageAttribute ) );
-			string menuFormatJson = storage.MenuFormat;
+			try
+			{
+				Assembly assem = this.GetType().Assembly;
+				var storage = (AssociationStorageAttribute)assem.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
+				string menuFormatJson = storage.MenuFormat;
 
-			MessageBox.Show( "menuFormat=" + menuFormatJson );
-			var jsonReader = new JsonFx.Json.JsonReader();
-			dynamic[] menuFormatObject = jsonReader.Read<dynamic[]>( menuFormatJson );
+				MessageBox.Show( menuFormatJson, "menuFormtJson" );
 
-			MessageBox.Show( "menuFormatObject=" + menuFormatObject.Length );
+				var jsonReader = new JsonFx.Json.JsonReader();
+				dynamic menuFormatObject = jsonReader.Read<dynamic>( menuFormatJson );
+				dynamic menuFormatObjectChildren = menuFormatObject.children;
 
-			//  Create the menu strip.
-			var menu = new ContextMenuStrip();
+				var menu = new ContextMenuStrip();
 
-	//		//  Create a 'count lines' item.
-	//		var itemCountLines = new ToolStripMenuItem
-	//		{
-	//			Text = "Count Lines..."
-	////			Image = Properties.Resources.CountLines
-	//		};
+				AddChildren( menu, menuFormatObjectChildren );
+				//  Create a 'count lines' item.
+				//var itemCountLines = new ToolStripMenuItem
+				//{
+				//	Text = "Count Lines..."
+				//	//			Image = Properties.Resources.CountLines
+				//};
 
-	//		//  When we click, we'll count the lines.
-	//		itemCountLines.Click += ( sender, args ) => OnClick();
+				////  When we click, we'll count the lines.
+				//itemCountLines.Click += ( sender, args ) => OnClick();
 
-	//		//  Add the item to the context menu.
-	//		menu.Items.Add( itemCountLines );
+				////  Add the item to the context menu.
+				//menu.Items.Add( itemCountLines );
 
-			//  Return the menu.
-			return menu;
+				//  Return the menu.
+				return menu;
+			}
+			catch ( Exception e )
+			{
+				MessageBox.Show( e.Message + "\r\n\r\n" + e.StackTrace, "Error whilst creating menu" );
+			}
+			return null;
 		}
 
 		private void OnClick()
@@ -164,7 +220,7 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public void Create( string dllPath, dynamic[] menuFormat, AssociationType association, string[] associations )
+		public void Create( string dllPath, dynamic menuFormat, AssociationType association, string[] associations )
 		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
@@ -254,7 +310,7 @@ namespace windowsexplorermenu_clr
 		public async Task<object> Register( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
-			dynamic[] menuFormat = (dynamic[])input.menu;
+			dynamic menuFormat = (dynamic)input.menu;
 			AssociationType association = Util.IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
 			string[] associations = Util.IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
 

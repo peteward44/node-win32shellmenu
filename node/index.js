@@ -20,7 +20,7 @@ function register( dllname, menu, options, callback ) {
 	var dll = path.normalize( path.resolve( dllname ) );
 	// TODO: copy options object before modifying it
 	options.dllpath = dll;
-	options.menu = menu;
+	options.menu = { children: menu };
 	
 	fs.ensureDirSync( path.dirname( dll ) );
 	fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
