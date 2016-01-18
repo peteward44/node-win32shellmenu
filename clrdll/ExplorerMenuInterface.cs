@@ -245,6 +245,11 @@ namespace windowsexplorermenu_clr
 			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), guid.ToString() );
 			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), actionPath, menuFormatJson, association );
 
+			// embed all images found in the menu into the assembly
+			System.Resources.IResourceWriter rw = myModBuilder.DefineResource( "WriteSatelliteAssembly.MyResource2.fr.resources", "My Description", ResourceAttributes.Public );
+			var imageFilename = "icon.bmp";
+			rw.AddResource( "resName", System.Drawing.Image.FromFile( imageFilename ) );
+
 			myTypeBuilder.CreateType();
 			myModBuilder.CreateGlobalFunctions();
 
