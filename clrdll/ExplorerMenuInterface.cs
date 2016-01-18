@@ -23,31 +23,15 @@ namespace windowsexplorermenu_clr
 
 	class Util
 	{
+		public static bool IsJsonProperty( dynamic expandoObject, string name )
+		{
+			var dic = (IDictionary<String, Object>)expandoObject;
+			return dic.ContainsKey( name );
+		}
+
 		public static bool IsProperty( dynamic expandoObject, string name )
 		{
-			var exp = expandoObject as System.Dynamic.ExpandoObject;
-			if ( exp != null )
-			{
-				return exp.Any( pair => pair.Key == name );
-			}
-			else
-			{
-				return expandoObject.GetType().GetProperty( name ) != null;
-			}
-			//var prop = expandoObject.GetType().GetProperty( name ) != null;
-			//if ( prop )
-			//	return true;
-			////try {
-			////	var dic = (IDictionary<String, object>)expandoObject;
-			////	if ( dic != null )
-			////	{
-			////		return dic.ContainsKey( name );
-			////	}
-			////}
-			////catch (Exception)
-			////{
-			////}
-			//return false;
+			return expandoObject.GetType().GetProperty( name ) != null;
 		}
 	}
 
@@ -55,6 +39,8 @@ namespace windowsexplorermenu_clr
 	//[COMServerAssociation( AssociationType.FileExtension, ".txt" )]
 	public class MenuExtension : SharpContextMenu
 	{
+		AssociationStorageAttribute storage;
+
 		protected override bool CanShowMenu()
 		{
 			return true;
@@ -62,27 +48,55 @@ namespace windowsexplorermenu_clr
 
 		private void OnClick( dynamic item )
 		{
-			var action = Util.IsProperty( item, "action" ) ? (string)item.action : "";
-			MessageBox.Show( "Executing action: " + action );
+			var action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
+			var args = Util.IsJsonProperty( item, "args" ) ? (string[])item.args : new string[]{};
+			var style = Util.IsJsonProperty( item, "style" ) ? (string)item.remain : "remain";
+
+			string type = style == "remain" ? "/K" : "/C";
+			string argsString = "";
+			if ( args.Length > 0 )
+			{
+				argsString = @"""" + string.Join( @""" """, args ) + @"""";
+			}
+			string fullArgs = type + @" node """ + action + @""" " + argsString;
+		
+			System.Diagnostics.Process process = new System.Diagnostics.Process();
+			System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+			startInfo.WindowStyle = style == "hidden" ? System.Diagnostics.ProcessWindowStyle.Hidden : System.Diagnostics.ProcessWindowStyle.Normal;
+			startInfo.FileName = "cmd.exe";
+			startInfo.Arguments = fullArgs;
+			startInfo.WorkingDirectory = storage.ActionPath;
+			process.StartInfo = startInfo;
+			process.Start();
 		}
 
-		private void AddChildren( ContextMenuStrip menu, dynamic children )
+		private void AddChildren( dynamic menu, dynamic children )
 		{
 			for ( var i=0; i<children.Length; ++i )
 			{
 				dynamic item = children[ i ];
 				JsonFx.Json.JsonWriter jw = new JsonFx.Json.JsonWriter();
 				string s = jw.Write( item );
-				MessageBox.Show( "item=" + s );
-				var name = Util.IsProperty( item, "name" ) ? (string)item.name : "New Menu Item";
-				var action = Util.IsProperty( item, "action" ) ? (string)item.action : "";
-				MessageBox.Show( "Adding action: " + action );
-
+				var name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
 
 				// TODO: embed image into assembly and reference that
 				var menuItem = new ToolStripMenuItem( name );
-				menuItem.Click += ( sender, args ) => OnClick( item );
-				menu.Items.Add( menuItem );
+				if ( Util.IsJsonProperty( item, "children" ) )
+				{
+					AddChildren( menuItem, item.children );
+				}
+				else if ( Util.IsJsonProperty( item, "action" ) )
+				{
+					menuItem.Click += ( sender, args ) => OnClick( item );
+				}
+				if ( menu is ContextMenuStrip )
+				{
+					menu.Items.Add( menuItem );
+				}
+				else
+				{
+					menu.DropDownItems.Add( menuItem );
+				}
 			}
 		}
 
@@ -91,32 +105,15 @@ namespace windowsexplorermenu_clr
 			try
 			{
 				Assembly assem = this.GetType().Assembly;
-				var storage = (AssociationStorageAttribute)assem.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
+				this.storage = (AssociationStorageAttribute)assem.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
 				string menuFormatJson = storage.MenuFormat;
-
-				MessageBox.Show( menuFormatJson, "menuFormtJson" );
 
 				var jsonReader = new JsonFx.Json.JsonReader();
 				dynamic menuFormatObject = jsonReader.Read<dynamic>( menuFormatJson );
 				dynamic menuFormatObjectChildren = menuFormatObject.children;
 
 				var menu = new ContextMenuStrip();
-
 				AddChildren( menu, menuFormatObjectChildren );
-				//  Create a 'count lines' item.
-				//var itemCountLines = new ToolStripMenuItem
-				//{
-				//	Text = "Count Lines..."
-				//	//			Image = Properties.Resources.CountLines
-				//};
-
-				////  When we click, we'll count the lines.
-				//itemCountLines.Click += ( sender, args ) => OnClick();
-
-				////  Add the item to the context menu.
-				//menu.Items.Add( itemCountLines );
-
-				//  Return the menu.
 				return menu;
 			}
 			catch ( Exception e )
@@ -125,17 +122,13 @@ namespace windowsexplorermenu_clr
 			}
 			return null;
 		}
-
-		private void OnClick()
-		{
-			MessageBox.Show( "Test worked" );
-		}
 	}
 
 
 	// Custom attribute to store the file association data at the assembly level.
 	public class AssociationStorageAttribute : Attribute
 	{
+		private string actionPath;
 		private string menuFormat;
 		private AssociationType at;
 		public AssociationType Association
@@ -152,9 +145,17 @@ namespace windowsexplorermenu_clr
 				return menuFormat;
 			}
 		}
-
-		public AssociationStorageAttribute( string menuFormat, AssociationType _at )
+		public string ActionPath
 		{
+			get
+			{
+				return actionPath;
+			}
+		}
+
+		public AssociationStorageAttribute( string actionPath, string menuFormat, AssociationType _at )
+		{
+			this.actionPath = actionPath;
 			this.menuFormat = menuFormat;
 			this.at = _at;
 		}
@@ -220,7 +221,7 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public void Create( string dllPath, dynamic menuFormat, AssociationType association, string[] associations )
+		public void Create( string dllPath, string actionPath, dynamic menuFormat, AssociationType association, string[] associations )
 		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
@@ -242,7 +243,7 @@ namespace windowsexplorermenu_clr
 			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
 			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), association, associations );
 			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), guid.ToString() );
-			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), menuFormatJson, association );
+			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), actionPath, menuFormatJson, association );
 
 			myTypeBuilder.CreateType();
 			myModBuilder.CreateGlobalFunctions();
@@ -310,11 +311,12 @@ namespace windowsexplorermenu_clr
 		public async Task<object> Register( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
+			string actionPath = (string)input.actionpath;
 			dynamic menuFormat = (dynamic)input.menu;
 			AssociationType association = Util.IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
 			string[] associations = Util.IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
 
-			Create( dllPath, menuFormat, association, associations );
+			Create( dllPath, actionPath, menuFormat, association, associations );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			RegistrationServices reg = new RegistrationServices();

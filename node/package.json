@@ -9,6 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "app-root-path": "^1.0.0",
     "edge": "^5.0.0",
     "fs-extra": "^0.26.4"
   }

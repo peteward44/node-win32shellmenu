@@ -20,6 +20,17 @@ describe('register', function () {
 				name: "Dynamic menu test - item 2",
 				action: "js/myjs.js",
 				args: [ "arg1" ]
+			},
+			{
+				name: "Dynamic menu test - item 3",
+				children: [
+					{
+						name: "Sub menu item 1"
+					},
+					{
+						name: "Sub menu item 2"
+					}
+				]
 			}
 		];
 		var options = { association: 'fileextension', associations: [ ".txt" ] };

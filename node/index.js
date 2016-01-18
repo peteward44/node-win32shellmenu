@@ -3,6 +3,7 @@
 var fs = require( 'fs-extra' );
 var path = require( 'path' );
 var edge = require( 'edge' );
+var appRoot = require('app-root-path');
 var exec = require( 'child_process' ).exec;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
@@ -20,6 +21,10 @@ function register( dllname, menu, options, callback ) {
 	var dll = path.normalize( path.resolve( dllname ) );
 	// TODO: copy options object before modifying it
 	options.dllpath = dll;
+	if ( !Array.isArray( menu ) ) {
+		menu = [ menu ];
+	}
+	options.actionpath = ( options.actionpath || appRoot.toString() ).toString();
 	options.menu = { children: menu };
 	
 	fs.ensureDirSync( path.dirname( dll ) );
