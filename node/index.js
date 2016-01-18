@@ -54,6 +54,8 @@ function register( dllname, menu, options, callback ) {
 	options.actionpath = ( options.actionpath || appRoot.toString() ).toString();
 	options.menu = { children: menu };
 	options.resources = options.resources || {};
+	options.association = options.association || 'all';
+	options.associations = options.associations || [];
 	
 	parseMenuForImagesRecurse( options, options.menu.children );
 	

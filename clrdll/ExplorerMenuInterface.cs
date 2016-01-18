@@ -335,13 +335,18 @@ namespace windowsexplorermenu_clr
 		{
 			string dllPath = (string)input.dllpath;
 			IDictionary<string, object> resourceList = (IDictionary<string, object>)input.resources;
-			//IDictionary<string, string> resourceList = new Dictionary<string, string>();
 			string actionPath = (string)input.actionpath;
 			dynamic menuFormat = (dynamic)input.menu;
-			AssociationType association = Util.IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
-			string[] associations = Util.IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
+			AssociationType association = StringNameToAssociationType( (string)input.association );
+			object[] associations_objects = (object[])input.associations;
+			List<string> associations_list = new List<string>();
 
-			Create( dllPath, resourceList, actionPath, menuFormat, association, associations );
+			foreach ( object o in associations_objects )
+			{
+				associations_list.Add( (string)o );
+			}
+
+			Create( dllPath, resourceList, actionPath, menuFormat, association, associations_list.ToArray() );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			RegistrationServices reg = new RegistrationServices();
