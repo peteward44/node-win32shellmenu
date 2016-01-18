@@ -25,7 +25,8 @@ describe('register', function () {
 				name: "Dynamic menu test - item 3",
 				children: [
 					{
-						name: "Sub menu item 1"
+						name: "Sub menu item 1",
+						image: "test/icon.bmp"
 					},
 					{
 						name: "Sub menu item 2"

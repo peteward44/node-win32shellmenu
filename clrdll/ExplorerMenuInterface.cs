@@ -79,8 +79,19 @@ namespace windowsexplorermenu_clr
 				string s = jw.Write( item );
 				var name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
 
-				// TODO: embed image into assembly and reference that
+				// embed image into assembly and reference that
 				var menuItem = new ToolStripMenuItem( name );
+				if ( Util.IsJsonProperty( item, "imageResource" ) )
+				{
+					var resources = this.GetType().Assembly.GetManifestResourceStream( (string)item.imageResource + ".resources" );
+					var rr = new System.Resources.ResourceReader( resources );
+					string resourceType;
+					byte[] resourceData;
+					rr.GetResourceData( "image.bmp", out resourceType, out resourceData );
+					// For some reason the resource compiler adds 4 bytes to the start of our data.
+					System.Drawing.Bitmap bmp = new System.Drawing.Bitmap( new System.IO.MemoryStream( resourceData, 4, resourceData.Length-4 ) );
+					menuItem.Image = bmp;
+				}
 				if ( Util.IsJsonProperty( item, "children" ) )
 				{
 					AddChildren( menuItem, item.children );
@@ -221,7 +232,7 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public void Create( string dllPath, string actionPath, dynamic menuFormat, AssociationType association, string[] associations )
+		public void Create( string dllPath, IDictionary<string, object> resourceList, string actionPath, dynamic menuFormat, AssociationType association, string[] associations )
 		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
@@ -246,9 +257,16 @@ namespace windowsexplorermenu_clr
 			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), actionPath, menuFormatJson, association );
 
 			// embed all images found in the menu into the assembly
-			System.Resources.IResourceWriter rw = myModBuilder.DefineResource( "WriteSatelliteAssembly.MyResource2.fr.resources", "My Description", ResourceAttributes.Public );
-			var imageFilename = "icon.bmp";
-			rw.AddResource( "resName", System.Drawing.Image.FromFile( imageFilename ) );
+			foreach ( string keyname in resourceList.Keys )
+			{
+				string filename = (string)resourceList[ keyname ];
+				System.Drawing.Image image = System.Drawing.Image.FromFile( filename );
+				System.IO.MemoryStream memStream = new System.IO.MemoryStream();
+				image.Save( memStream, System.Drawing.Imaging.ImageFormat.Bmp );
+				byte[] rawdata = memStream.ToArray();
+				System.Resources.IResourceWriter rw = myModBuilder.DefineResource( keyname + ".resources", "description", ResourceAttributes.Public );
+				rw.AddResource( "image.bmp", rawdata );
+			}
 
 			myTypeBuilder.CreateType();
 			myModBuilder.CreateGlobalFunctions();
@@ -316,12 +334,14 @@ namespace windowsexplorermenu_clr
 		public async Task<object> Register( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
+			IDictionary<string, object> resourceList = (IDictionary<string, object>)input.resources;
+			//IDictionary<string, string> resourceList = new Dictionary<string, string>();
 			string actionPath = (string)input.actionpath;
 			dynamic menuFormat = (dynamic)input.menu;
 			AssociationType association = Util.IsProperty( input, "association" ) ? StringNameToAssociationType( (string)input.association ) : AssociationType.AllFiles;
 			string[] associations = Util.IsProperty( input, "associations" ) ? (string[])input.associations : new string[ 0 ];
 
-			Create( dllPath, actionPath, menuFormat, association, associations );
+			Create( dllPath, resourceList, actionPath, menuFormat, association, associations );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			RegistrationServices reg = new RegistrationServices();
