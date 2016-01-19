@@ -7,7 +7,6 @@ var appRoot = require('app-root-path');
 var exec = require( 'child_process' ).exec;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
-var ourSharpDllPath = path.join( __dirname, 'dll', 'SharpShell.dll' );
 var ourJsonFxDllPath = path.join( __dirname, 'dll', 'JsonFx.dll' );
 
 
@@ -56,7 +55,6 @@ function register( dllname, menu, options, callback ) {
 	options.menu = { children: menu };
 	options.resources = options.resources || {};
 	options.association = options.association || [ 'all' ];
-	options.associations = options.associations || [];
 	
 	if ( !Array.isArray( options.association ) ) {
 		options.association = [ options.association ];
@@ -69,7 +67,6 @@ function register( dllname, menu, options, callback ) {
 	
 	fs.ensureDirSync( path.dirname( dll ) );
 	fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
-	fs.copySync( ourSharpDllPath, path.join( path.dirname( dll ), path.basename( ourSharpDllPath ) ) );
 	fs.copySync( ourJsonFxDllPath, path.join( path.dirname( dll ), path.basename( ourJsonFxDllPath ) ) );
 
 	clrMethod( options, function( err ) {

@@ -14,15 +14,18 @@ describe('register', function () {
 		var dllname = path.join( __dirname, 'mydll.dll' );
 		var menu = [
 			{
-				name: "Dynamic menu test - item 1"
+				name: "Dynamic menu test - item 1",
+				position: 1
 			},
 			{
 				name: "Dynamic menu test - item 2",
 				action: "js/myjs.js",
-				args: [ "arg1" ]
+				args: [ "arg1" ],
+				position: 3
 			},
 			{
 				name: "Dynamic menu test - item 3",
+				position: 2,
 				children: [
 					{
 						name: "Sub menu item 1",

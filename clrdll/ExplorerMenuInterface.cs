@@ -121,28 +121,32 @@ namespace windowsexplorermenu_clr
 		AssociationStorageAttribute storage;
 
 
-		private void OnClick( dynamic item )
+		private void OnClick( dynamic item, List<string> inputFoldersAndFiles )
 		{
-			var action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
-			var args = Util.IsJsonProperty( item, "args" ) ? (string[])item.args : new string[]{};
-			var style = Util.IsJsonProperty( item, "style" ) ? (string)item.remain : "remain";
+			string action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
 
-			string type = style == "remain" ? "/K" : "/C";
-			string argsString = "";
-			if ( args.Length > 0 )
+			if ( action.Length > 0 )
 			{
-				argsString = @"""" + string.Join( @""" """, args ) + @"""";
+				string[] args = Util.IsJsonProperty( item, "args" ) ? Util.ObjectToStringArray( (object[])item.args ) : new string[ 0 ];
+				var style = Util.IsJsonProperty( item, "style" ) ? (string)item.remain : "remain";
+
+				string type = style == "remain" ? "/K" : "/C";
+				string argsString = "";
+				if ( args.Length > 0 )
+				{
+					argsString = @"""" + string.Join( @""" """, args ) + @"""";
+				}
+				string fullArgs = type + @" node """ + action + @""" " + argsString;
+
+				System.Diagnostics.Process process = new System.Diagnostics.Process();
+				System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+				startInfo.WindowStyle = style == "hidden" ? System.Diagnostics.ProcessWindowStyle.Hidden : System.Diagnostics.ProcessWindowStyle.Normal;
+				startInfo.FileName = "cmd.exe";
+				startInfo.Arguments = fullArgs;
+				startInfo.WorkingDirectory = storage.ActionPath;
+				process.StartInfo = startInfo;
+				process.Start();
 			}
-			string fullArgs = type + @" node """ + action + @""" " + argsString;
-		
-			System.Diagnostics.Process process = new System.Diagnostics.Process();
-			System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-			startInfo.WindowStyle = style == "hidden" ? System.Diagnostics.ProcessWindowStyle.Hidden : System.Diagnostics.ProcessWindowStyle.Normal;
-			startInfo.FileName = "cmd.exe";
-			startInfo.Arguments = fullArgs;
-			startInfo.WorkingDirectory = storage.ActionPath;
-			process.StartInfo = startInfo;
-			process.Start();
 		}
 
 		//IntPtr subMenu = CreateSubMenu();
@@ -152,7 +156,7 @@ namespace windowsexplorermenu_clr
 		//InsertSubMenu( subMenu, @"Inspired Audio Tool", 4, LoadBitmap() );
 		//InsertSeperator( 5 );
 
-		private void AddChildren( IntPtr menu, dynamic children )
+		private void AddChildren( IntPtr menu, dynamic children, bool isRoot )
 		{
 			for ( var i=0; i<children.Length; ++i )
 			{
@@ -160,9 +164,7 @@ namespace windowsexplorermenu_clr
 				JsonFx.Json.JsonWriter jw = new JsonFx.Json.JsonWriter();
 				string s = jw.Write( item );
 				string name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
-				string action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
-				string[] args = Util.IsJsonProperty( item, "args" ) ? Util.ObjectToStringArray( (object[])item.args ) : new string[0];
-
+				
 				// embed image into assembly and reference that
 				System.Drawing.Bitmap bmp = null;
 				IntPtr subMenu = IntPtr.Zero;
@@ -180,16 +182,20 @@ namespace windowsexplorermenu_clr
 				if ( Util.IsJsonProperty( item, "children" ) )
 				{
 					subMenu = CreateSubMenu();
-					AddChildren( subMenu, item.children );
+					AddChildren( subMenu, item.children, false );
 				}
 
 				int position = i+1;
+				if ( isRoot )
+				{
+					position = Util.IsJsonProperty( item, "position" ) ? (int)item.position : position;
+				}
 				if ( menu == IntPtr.Zero )
 				{
 					// root element
 					if ( subMenu == IntPtr.Zero )
 					{
-						uint id = InsertMenuItem( name, position, ( List<string> selectedFiles ) => { Action.DoAction( action, args, selectedFiles ); } );
+						uint id = InsertMenuItem( name, position, ( List<string> selectedFiles ) => { OnClick( item, selectedFiles ); } );
 						if ( bmp != null )
 						{
 							SetMenuItemBitmap( id, bmp );
@@ -205,7 +211,7 @@ namespace windowsexplorermenu_clr
 					// sub menu
 					if ( subMenu == IntPtr.Zero )
 					{
-						InsertMenuItemIntoSubMenu( menu, name, position, bmp, ( List<string> selectedFiles ) => { Action.DoAction( action, args, selectedFiles ); } );
+						InsertMenuItemIntoSubMenu( menu, name, position, bmp, ( List<string> selectedFiles ) => { OnClick( item, selectedFiles ); } );
 					}
 					else
 					{
@@ -242,7 +248,7 @@ namespace windowsexplorermenu_clr
 				dynamic menuFormatObject = jsonReader.Read<dynamic>( menuFormatJson );
 				dynamic menuFormatObjectChildren = menuFormatObject.children;
 
-				AddChildren( IntPtr.Zero, menuFormatObjectChildren );
+				AddChildren( IntPtr.Zero, menuFormatObjectChildren, true );
 			}
 			catch ( Exception e )
 			{
