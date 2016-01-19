@@ -94,7 +94,7 @@ namespace Platform
 			switch ( contextMenu )
 			{
 				case RightClickContextMenuOptions.AllFileSystemObjects:
-					return @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandler";
+					return @"AllFilesystemObjects\shellex\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.Files:
 					return @"*\shellex\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.Folders:
