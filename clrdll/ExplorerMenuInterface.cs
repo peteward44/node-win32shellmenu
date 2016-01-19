@@ -205,12 +205,15 @@ namespace windowsexplorermenu_clr
 					// sub menu
 					if ( subMenu == IntPtr.Zero )
 					{
-					//	MessageBox.Show( name + " " + ( bmp != null ? "has image" : "no image" ) );
 						InsertMenuItemIntoSubMenu( menu, name, position, bmp, ( List<string> selectedFiles ) => { Action.DoAction( action, args, selectedFiles ); } );
 					}
 					else
 					{
-						// TODO: need insert-sub-menu-into-sub-menu method
+						uint id = InsertSubMenuIntoSubMenu( menu, subMenu, name, position );
+						if ( bmp != null )
+						{
+							SetMenuItemBitmap( id, bmp );
+						}
 					}
 				}
 			}

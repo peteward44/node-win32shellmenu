@@ -270,18 +270,25 @@ namespace Platform
 
 		protected uint InsertSubMenu( IntPtr subMenu, string textName, int position )
 		{
+			return InsertSubMenuIntoSubMenu( mMenuHandle, subMenu, textName, position );
+		}
+
+
+
+		protected uint InsertSubMenuIntoSubMenu( IntPtr menu, IntPtr subMenu, string textName, int position )
+		{
 			MENUITEMINFO mii = new MENUITEMINFO();
-			mii.cbSize = ( uint )Marshal.SizeOf( typeof( MENUITEMINFO ) );
-			mii.fMask = ( uint )MIIM.ID | ( uint )MIIM.STRING | ( uint )MIIM.SUBMENU;
-			mii.wID = ( uint )( mMenuCmdFirst + mMenuItemsAddedCount );
-			mii.fType = ( uint )MF.STRING;
+			mii.cbSize = (uint)Marshal.SizeOf( typeof( MENUITEMINFO ) );
+			mii.fMask = (uint)MIIM.ID | (uint)MIIM.STRING | (uint)MIIM.SUBMENU;
+			mii.wID = (uint)( mMenuCmdFirst + mMenuItemsAddedCount );
+			mii.fType = (uint)MF.STRING;
 			mii.dwTypeData = textName;
 			mii.cch = 0;
-			mii.fState = ( uint )MF.ENABLED;
+			mii.fState = (uint)MF.ENABLED;
 			mii.hSubMenu = subMenu;
 
 			// Add it to the item
-			if ( DllImports.InsertMenuItem( mMenuHandle, (uint)position, true, ref mii ) == 0 )
+			if ( DllImports.InsertMenuItem( menu, (uint)position, true, ref mii ) == 0 )
 			{
 				// failed
 				return 0;

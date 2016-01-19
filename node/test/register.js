@@ -34,8 +34,7 @@ describe('register', function () {
 				]
 			}
 		];
-		//var options = { association: 'all', associations: [ ".txt" ] };
-		var options = { association: [ 'files', 'folders' ] };
+		var options = { association: [ 'all' /*'files', 'folders'*/ ] };
 		explorerMenu.register( dllname, menu, options, function( err ) {
 			if ( err ) {
 				console.error( err );
