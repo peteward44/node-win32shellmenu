@@ -10,8 +10,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 
 using System.Runtime.InteropServices;
-using SharpShell.Attributes;
-using SharpShell.SharpContextMenu;
 
 using System.Security.Cryptography;
 using System.Configuration.Assemblies;
@@ -20,6 +18,77 @@ using Microsoft.Win32;
 
 namespace windowsexplorermenu_clr
 {
+	public class Action
+	{
+		static string GetCurrentExecutingDirectory()
+		{
+			string filePath = new Uri( Assembly.GetExecutingAssembly().CodeBase ).LocalPath;
+			return System.IO.Path.GetDirectoryName( filePath );
+		}
+
+		static bool IsValidInputFile( string file )
+		{
+			string ext = System.IO.Path.GetExtension( file ).ToLower();
+			bool validExtension = ext == ".wav" || ext == ".ogg" || ext == ".mp3";
+			return validExtension;
+		}
+
+		static List<string> BuildFileList( List<string> inputFoldersAndFiles )
+		{
+			List<string> output = new List<string>();
+			foreach ( string inputFile in inputFoldersAndFiles )
+			{
+				if ( System.IO.Directory.Exists( inputFile ) )
+				{
+					foreach ( string subFile in System.IO.Directory.GetFiles( inputFile ) )
+					{
+						if ( IsValidInputFile( subFile ) )
+							output.Add( subFile );
+					}
+				}
+				else if ( System.IO.File.Exists( inputFile ) )
+				{
+					if ( IsValidInputFile( inputFile ) )
+						output.Add( inputFile );
+				}
+			}
+			return output;
+		}
+
+		public static void DoAction( string action, string[] args, List<string> inputFoldersAndFiles )
+		{
+			//try
+			//{
+			//	List<string> files = BuildFileList( inputFoldersAndFiles );
+			//	if ( files.Count == 0 )
+			//	{
+			//		MessageBox.Show( "No valid image files found in selection", "Inspired Texture Tool", MessageBoxButtons.OK, MessageBoxIcon.Warning );
+			//		return;
+			//	}
+
+			//	string toolPath = System.IO.Path.Combine( GetCurrentExecutingDirectory(), "js", "index.js" );
+			//	string filesList = "\"" + string.Join( "\" \"", files ) + "\"";
+
+			//	string arguments = "/S /K call node \"" + toolPath + "\" " + ( convertOnly ? "--convertOnly " : "" );
+			//	arguments += filesList;
+
+			//	System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo();
+			//	psi.CreateNoWindow = false;
+			//	psi.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
+			//	psi.Arguments = arguments;
+			//	psi.FileName = "cmd.exe";
+			//	psi.UseShellExecute = false;
+			//	System.Diagnostics.Process.Start( psi );
+			//}
+			//catch ( Exception e )
+			//{
+			//	string err = e.Message + "\r\n\r\n" + e.StackTrace;
+			//	Console.WriteLine( err );
+			//	MessageBox.Show( err );
+			//}
+		}
+	}
+
 
 	class Util
 	{
@@ -33,18 +102,24 @@ namespace windowsexplorermenu_clr
 		{
 			return expandoObject.GetType().GetProperty( name ) != null;
 		}
+
+
+		public static string[] ObjectToStringArray( object[] array )
+		{
+			List<string> list = new List<string>();
+			foreach ( object o in array )
+			{
+				list.Add( (string)o );
+			}
+			return list.ToArray();
+		}
 	}
 
-	//[ComVisible( true )]
-	//[COMServerAssociation( AssociationType.FileExtension, ".txt" )]
-	public class MenuExtension : SharpContextMenu
+	//[Guid( "9AA8DDCB-0540-4cd3-BD31-D91DADD81EE5" ), ComVisible( true )]
+	public class MenuExtension : Platform.ShellRightClickContextMenuClass
 	{
 		AssociationStorageAttribute storage;
 
-		protected override bool CanShowMenu()
-		{
-			return true;
-		}
 
 		private void OnClick( dynamic item )
 		{
@@ -70,17 +145,28 @@ namespace windowsexplorermenu_clr
 			process.Start();
 		}
 
-		private void AddChildren( dynamic menu, dynamic children )
+		//IntPtr subMenu = CreateSubMenu();
+		//InsertMenuItemIntoSubMenu( subMenu, @"Create audio sprite", 1, delegate( List<string> selectedFiles ) { Action.DoAction( selectedFiles, false ); } );
+		//InsertMenuItemIntoSubMenu( subMenu, @"Convert file(s) to mp3/ogg", 2, delegate( List<string> selectedFiles ) { Action.DoAction( selectedFiles, true ); } );
+		//InsertSeperator( 3 );
+		//InsertSubMenu( subMenu, @"Inspired Audio Tool", 4, LoadBitmap() );
+		//InsertSeperator( 5 );
+
+		private void AddChildren( IntPtr menu, dynamic children )
 		{
 			for ( var i=0; i<children.Length; ++i )
 			{
 				dynamic item = children[ i ];
 				JsonFx.Json.JsonWriter jw = new JsonFx.Json.JsonWriter();
 				string s = jw.Write( item );
-				var name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
+				string name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
+				string action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
+				string[] args = Util.IsJsonProperty( item, "args" ) ? Util.ObjectToStringArray( (object[])item.args ) : new string[0];
 
 				// embed image into assembly and reference that
-				var menuItem = new ToolStripMenuItem( name );
+				System.Drawing.Bitmap bmp = null;
+				IntPtr subMenu = IntPtr.Zero;
+
 				if ( Util.IsJsonProperty( item, "imageResource" ) )
 				{
 					var resources = this.GetType().Assembly.GetManifestResourceStream( (string)item.imageResource + ".resources" );
@@ -89,29 +175,59 @@ namespace windowsexplorermenu_clr
 					byte[] resourceData;
 					rr.GetResourceData( "image.bmp", out resourceType, out resourceData );
 					// For some reason the resource compiler adds 4 bytes to the start of our data.
-					System.Drawing.Bitmap bmp = new System.Drawing.Bitmap( new System.IO.MemoryStream( resourceData, 4, resourceData.Length-4 ) );
-					menuItem.Image = bmp;
+					bmp = new System.Drawing.Bitmap( new System.IO.MemoryStream( resourceData, 4, resourceData.Length-4 ) );
 				}
 				if ( Util.IsJsonProperty( item, "children" ) )
 				{
-					AddChildren( menuItem, item.children );
+					subMenu = CreateSubMenu();
+					AddChildren( subMenu, item.children );
 				}
-				else if ( Util.IsJsonProperty( item, "action" ) )
+
+				int position = i+1;
+				if ( menu == IntPtr.Zero )
 				{
-					menuItem.Click += ( sender, args ) => OnClick( item );
-				}
-				if ( menu is ContextMenuStrip )
-				{
-					menu.Items.Add( menuItem );
+					// root element
+					if ( subMenu == IntPtr.Zero )
+					{
+						uint id = InsertMenuItem( name, position, ( List<string> selectedFiles ) => { Action.DoAction( action, args, selectedFiles ); } );
+						if ( bmp != null )
+						{
+							SetMenuItemBitmap( id, bmp );
+						}
+					}
+					else
+					{
+						InsertSubMenu( subMenu, name, position, bmp );
+					}
 				}
 				else
 				{
-					menu.DropDownItems.Add( menuItem );
+					// sub menu
+					if ( subMenu == IntPtr.Zero )
+					{
+					//	MessageBox.Show( name + " " + ( bmp != null ? "has image" : "no image" ) );
+						InsertMenuItemIntoSubMenu( menu, name, position, bmp, ( List<string> selectedFiles ) => { Action.DoAction( action, args, selectedFiles ); } );
+					}
+					else
+					{
+						// TODO: need insert-sub-menu-into-sub-menu method
+					}
 				}
 			}
 		}
 
-		protected override ContextMenuStrip CreateMenu()
+
+		protected override string GetVerbString()
+		{
+			return "Verb String";
+		}
+
+		protected override string GetHelpString()
+		{
+			return "Help String";
+		}
+
+		protected override void OnBuildMenu( List<string> list )
 		{
 			try
 			{
@@ -123,15 +239,12 @@ namespace windowsexplorermenu_clr
 				dynamic menuFormatObject = jsonReader.Read<dynamic>( menuFormatJson );
 				dynamic menuFormatObjectChildren = menuFormatObject.children;
 
-				var menu = new ContextMenuStrip();
-				AddChildren( menu, menuFormatObjectChildren );
-				return menu;
+				AddChildren( IntPtr.Zero, menuFormatObjectChildren );
 			}
 			catch ( Exception e )
 			{
 				MessageBox.Show( e.Message + "\r\n\r\n" + e.StackTrace, "Error whilst creating menu" );
 			}
-			return null;
 		}
 	}
 
@@ -139,10 +252,11 @@ namespace windowsexplorermenu_clr
 	// Custom attribute to store the file association data at the assembly level.
 	public class AssociationStorageAttribute : Attribute
 	{
+		private string name;
 		private string actionPath;
 		private string menuFormat;
-		private AssociationType at;
-		public AssociationType Association
+		private Platform.ComRegisterClass.RightClickContextMenuOptions[] at;
+		public Platform.ComRegisterClass.RightClickContextMenuOptions[] Association
 		{
 			get
 			{
@@ -163,9 +277,14 @@ namespace windowsexplorermenu_clr
 				return actionPath;
 			}
 		}
-
-		public AssociationStorageAttribute( string actionPath, string menuFormat, AssociationType _at )
+		public string Name
 		{
+			get { return name; }
+		}
+
+		public AssociationStorageAttribute( string name, string actionPath, string menuFormat, Platform.ComRegisterClass.RightClickContextMenuOptions[] _at )
+		{
+			this.name = name;
 			this.actionPath = actionPath;
 			this.menuFormat = menuFormat;
 			this.at = _at;
@@ -207,32 +326,50 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		private AssociationType StringNameToAssociationType( string name )
+		private Platform.ComRegisterClass.RightClickContextMenuOptions[] StringNameToAssociationType( string[] names )
 		{
-			switch ( name )
+			List<Platform.ComRegisterClass.RightClickContextMenuOptions> list = new List<Platform.ComRegisterClass.RightClickContextMenuOptions>();
+
+			foreach ( object n in names )
 			{
-				default:
-				case "all":
-					return AssociationType.AllFiles;
-				case "class":
-					return AssociationType.Class;
-				case "classofextension":
-					return AssociationType.ClassOfExtension;
-				case "directory":
-					return AssociationType.Directory;
-				case "drive":
-					return AssociationType.Drive;
-				case "fileextension":
-					return AssociationType.FileExtension;
-				case "none":
-					return AssociationType.None;
-				case "unknown":
-					return AssociationType.UnknownFiles;
+				string name = (string)n;
+				switch ( name )
+				{
+					case "all":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.AllFileSystemObjects );
+						break;
+					case "files":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.Files );
+						break;
+					case "folders":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.Folders );
+						break;
+					case "imagefiles":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.ImageFiles );
+						break;
+					case "videofiles":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.VideoFiles );
+						break;
+					case "desktopbackground":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.DesktopBackground );
+						break;
+					case "drive":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.Drive );
+						break;
+					case "printers":
+						list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.Printers );
+						break;
+				}
 			}
+			if ( list.Count == 0 )
+			{
+				list.Add( Platform.ComRegisterClass.RightClickContextMenuOptions.AllFileSystemObjects );
+			}
+			return list.ToArray();
 		}
 
 
-		public void Create( string dllPath, IDictionary<string, object> resourceList, string actionPath, dynamic menuFormat, AssociationType association, string[] associations )
+		public void Create( string name, Guid guid, string dllPath, IDictionary<string, object> resourceList, string actionPath, dynamic menuFormat, Platform.ComRegisterClass.RightClickContextMenuOptions[] association )
 		{
 			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
 			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
@@ -250,11 +387,10 @@ namespace windowsexplorermenu_clr
 			var menuFormatWriter = new JsonFx.Json.JsonWriter();
 			var menuFormatJson = menuFormatWriter.Write( menuFormat );
 
-			Guid guid = System.Guid.NewGuid();
 			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
-			AddAttribute( myTypeBuilder, typeof( COMServerAssociationAttribute ), association, associations );
+			AddAttribute( myTypeBuilder, typeof( GuidAttribute ), guid.ToString() );
 			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), guid.ToString() );
-			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), actionPath, menuFormatJson, association );
+			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), name, actionPath, menuFormatJson, association );
 
 			// embed all images found in the menu into the assembly
 			foreach ( string keyname in resourceList.Keys )
@@ -288,90 +424,22 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		static string GetContextMenuOptionsBaseKey( AssociationType association )
-		{
-			// See what this is about: @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandlers" 
-			// Compressed folders: HKEY_CLASSES_ROOT\CompressedFolder\ShellEx\ContextMenuHandlers
-			// Desktop background: HKEY_CLASSES_ROOT\DesktopBackground\shellex\ContextMenuHandlers
-			// Same as folder? HKEY_CLASSES_ROOT\Directory\Background\shellex\ContextMenuHandlers
-			// Drive: HKEY_CLASSES_ROOT\Drive\shellex\ContextMenuHandlers
-			// Windows 7 library folder: HKEY_CLASSES_ROOT\LibraryFolder\background\shellex\ContextMenuHandlers
-			// HKEY_CLASSES_ROOT\LibraryFolder\shellex\ContextMenuHandlers
-			// HKEY_CLASSES_ROOT\LibraryLocation\ShellEx\ContextMenuHandlers
-			// Printers: HKEY_CLASSES_ROOT\Printers\shellex\ContextMenuHandlers
-			// Results? HKEY_CLASSES_ROOT\Results\ShellEx\ContextMenuHandlers
-
-			// System file associations: HKEY_CLASSES_ROOT\SystemFileAssociations\.bmp\ShellEx
-			// Images: HKEY_CLASSES_ROOT\SystemFileAssociations\image\ShellEx\ContextMenuHandlers
-			// Videos: HKEY_CLASSES_ROOT\SystemFileAssociations\video\ShellEx\ContextMenuHandlers
-
-			switch ( association )
-			{
-				default:
-				case AssociationType.AllFiles:
-					return @"HKEY_CLASSES_ROOT\AllFilesystemObjects\shellex\ContextMenuHandler";
-				case AssociationType.FileExtension:
-				case AssociationType.Class:
-				case AssociationType.ClassOfExtension:
-				case AssociationType.UnknownFiles:
-					return @"*\shellex\ContextMenuHandlers\";
-				case AssociationType.Directory:
-					return @"Folder\shellex\ContextMenuHandlers\";
-				//case RightClickContextMenuOptions.ImageFiles:
-				//	return @"SystemFileAssociations\image\ShellEx\ContextMenuHandlers\";
-				//case RightClickContextMenuOptions.VideoFiles:
-				//	return @"SystemFileAssociations\video\ShellEx\ContextMenuHandlers\";
-				//case RightClickContextMenuOptions.DesktopBackground:
-				//	return @"DesktopBackground\shellex\ContextMenuHandlers\";
-				case AssociationType.Drive:
-					return @"Drive\shellex\ContextMenuHandlers\";
-				//case RightClickContextMenuOptions.Printers:
-				//	return @"Printers\shellex\ContextMenuHandlers\";
-			}
-		}
-
-
 		public async Task<object> Register( dynamic input )
 		{
+			string name = (string)input.name;
 			string dllPath = (string)input.dllpath;
 			IDictionary<string, object> resourceList = (IDictionary<string, object>)input.resources;
 			string actionPath = (string)input.actionpath;
 			dynamic menuFormat = (dynamic)input.menu;
-			AssociationType association = StringNameToAssociationType( (string)input.association );
-			object[] associations_objects = (object[])input.associations;
-			List<string> associations_list = new List<string>();
+			Platform.ComRegisterClass.RightClickContextMenuOptions[] association = StringNameToAssociationType( Util.ObjectToStringArray( (object[])input.association ) );
 
-			foreach ( object o in associations_objects )
-			{
-				associations_list.Add( (string)o );
-			}
-
-			Create( dllPath, resourceList, actionPath, menuFormat, association, associations_list.ToArray() );
+			Guid guid = System.Guid.NewGuid();
+			Create( name, guid, dllPath, resourceList, actionPath, menuFormat, association );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
-			RegistrationServices reg = new RegistrationServices();
-			Assembly assembly = Assembly.LoadFile( dllPath );
-			reg.RegisterAssembly( assembly, AssemblyRegistrationFlags.SetCodeBase );
+			Platform.ComRegisterClass.RegisterShellRightClickContextMenu( name, "{" + guid.ToString() + "}", association );
+			Platform.ComRegisterClass.RegisterServer( Assembly.LoadFile( dllPath ) );
 
-			var attribute = (GuidAttribute)assembly.GetCustomAttributes( typeof( GuidAttribute ), true )[ 0 ];
-			var clsid = "{" + attribute.Value + "}";
-			var programName = assembly.GetName().Name;
-
-			RegistryKey rk = Registry.CurrentUser.OpenSubKey( @"Software\Microsoft\Windows\CurrentVersion\Explorer", true );
-			rk.SetValue( @"DesktopProcess", 1 );
-			rk.Close();
-
-			// For Winnt set me as an approved shellex
-			rk = Registry.LocalMachine.OpenSubKey( @"Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved", true );
-			rk.SetValue( clsid, programName + @" Shell Extension" );
-			rk.Close();
-
-			if ( association != AssociationType.None )
-			{
-				rk = Registry.ClassesRoot.CreateSubKey( GetContextMenuOptionsBaseKey( association ) + programName );
-				rk.SetValue( "", clsid );
-				rk.Close();
-			}
 			return "";
 		}
 
@@ -379,33 +447,15 @@ namespace windowsexplorermenu_clr
 		public async Task<object> Unregister( dynamic input )
 		{
 			string dllPath = (string)input.dllpath;
-			RegistrationServices reg = new RegistrationServices();
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			Assembly assembly = Assembly.LoadFile( dllPath );
-			reg.UnregisterAssembly( assembly );
-			var programName = assembly.GetName().Name;
-			
+
 			var associationAttrib = (AssociationStorageAttribute)assembly.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
-			AssociationType association = associationAttrib.Association;
+			Platform.ComRegisterClass.RightClickContextMenuOptions[] associationArray = associationAttrib.Association;
 			var guidAttrib = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute),true)[0];
-			var clsid = "{" + guidAttrib.Value + "}";
 
-			RegistryKey rk = Registry.LocalMachine.OpenSubKey( @"Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved", true );
-			try
-			{
-				rk.DeleteValue( clsid );
-			}
-			catch ( Exception ) { }
-			rk.Close();
-
-			try
-			{
-				if ( association != AssociationType.None )
-				{
-					Registry.ClassesRoot.DeleteSubKey( GetContextMenuOptionsBaseKey( association ) + programName );
-				}
-			}
-			catch ( Exception ) {}
+			Platform.ComRegisterClass.RegisterShellRightClickContextMenu( associationAttrib.Name, "{" + guidAttrib.Value + "}", associationArray );
+			Platform.ComRegisterClass.UnregisterServer( assembly );
 
 			return "";
 		}

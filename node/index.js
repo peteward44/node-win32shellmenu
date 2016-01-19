@@ -51,11 +51,19 @@ function register( dllname, menu, options, callback ) {
 	if ( !Array.isArray( menu ) ) {
 		menu = [ menu ];
 	}
+	options.name = options.name || ( path.basename( dllname, path.extname( dllname ) ) );
 	options.actionpath = ( options.actionpath || appRoot.toString() ).toString();
 	options.menu = { children: menu };
 	options.resources = options.resources || {};
-	options.association = options.association || 'all';
+	options.association = options.association || [ 'all' ];
 	options.associations = options.associations || [];
+	
+	if ( !Array.isArray( options.association ) ) {
+		options.association = [ options.association ];
+	}
+	if ( !Array.isArray( options.associations ) ) {
+		options.associations = [ options.associations ];
+	}
 	
 	parseMenuForImagesRecurse( options, options.menu.children );
 	
