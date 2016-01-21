@@ -100,9 +100,9 @@ namespace Platform
 				case RightClickContextMenuOptions.Folders:
 					return @"Folder\shellex\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.ImageFiles:
-					return @"SystemFileAssociations\image\ShellEx\ContextMenuHandlers\";
+					return @"SystemFileAssociations\image\shellEx\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.VideoFiles:
-					return @"SystemFileAssociations\video\ShellEx\ContextMenuHandlers\";
+					return @"SystemFileAssociations\video\shellEx\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.DesktopBackground:
 					return @"DesktopBackground\shellex\ContextMenuHandlers\";
 				case RightClickContextMenuOptions.Drive:

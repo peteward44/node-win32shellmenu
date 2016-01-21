@@ -55,6 +55,9 @@ function register( dllname, menu, options, callback ) {
 	options.menu = { children: menu };
 	options.resources = options.resources || {};
 	options.association = options.association || [ 'all' ];
+	options.fileExtensionFilter = options.fileExtensionFilter || [];
+	options.guid = options.guid || '';
+	options.expandFileNames = options.expandFileNames === undefined ? true : options.expandFileNames;
 	
 	if ( !Array.isArray( options.association ) ) {
 		options.association = [ options.association ];
@@ -62,7 +65,9 @@ function register( dllname, menu, options, callback ) {
 	if ( !Array.isArray( options.associations ) ) {
 		options.associations = [ options.associations ];
 	}
-	
+	if ( !Array.isArray( options.fileExtensionFilter ) ) {
+		options.fileExtensionFilter = [ options.fileExtensionFilter ];
+	}
 	parseMenuForImagesRecurse( options, options.menu.children );
 	
 	fs.ensureDirSync( path.dirname( dll ) );
@@ -77,10 +82,7 @@ function register( dllname, menu, options, callback ) {
 exports.register = register;
 
 
-function unregister( dllname, callback ) {
-	// var dll = path.normalize( path.resolve( dllname ) );
-	// return exec( ourSrm + ' uninstall "' + dll + '"', { cwd: path.dirname( dll ) }, callback );
-	
+function unregister( dllname, callback ) {	
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
 		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',

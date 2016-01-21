@@ -37,7 +37,11 @@ describe('register', function () {
 				]
 			}
 		];
-		var options = { association: [ 'all' /*'files', 'folders'*/ ] };
+		var options = {
+			association: [ 'all' /*'files', 'folders'*/ ],
+			fileExtensionFilter: '.md',
+			guid: "8e2b5ec9-c073-4750-a811-b218ca58c3ae"
+		};
 		explorerMenu.register( dllname, menu, options, function( err ) {
 			if ( err ) {
 				console.error( err );
