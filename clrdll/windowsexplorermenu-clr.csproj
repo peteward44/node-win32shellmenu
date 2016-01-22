@@ -51,7 +51,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CreateAssembly.cs" />
     <Compile Include="ExplorerMenuInterface.cs" />
+    <Compile Include="InfoStorageAttribute.cs" />
+    <Compile Include="MenuBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShellRegister.cs" />
     <Compile Include="ShellRegisterInterop.cs" />

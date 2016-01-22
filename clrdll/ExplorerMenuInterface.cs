@@ -26,12 +26,6 @@ namespace windowsexplorermenu_clr
 			return dic.ContainsKey( name );
 		}
 
-		public static bool IsProperty( dynamic expandoObject, string name )
-		{
-			return expandoObject.GetType().GetProperty( name ) != null;
-		}
-
-
 		public static string[] ObjectToStringArray( object[] array )
 		{
 			List<string> list = new List<string>();
@@ -46,57 +40,13 @@ namespace windowsexplorermenu_clr
 	//[Guid( "9AA8DDCB-0540-4cd3-BD31-D91DADD81EE5" ), ComVisible( true )]
 	public class MenuExtension : Platform.ShellRightClickContextMenuClass
 	{
-		AssociationStorageAttribute storage;
-
-
-		bool IsValidInputFile( List<string> fileExtensionFilter, string file )
-		{
-			if ( fileExtensionFilter.Count > 0 )
-			{
-				string ext = System.IO.Path.GetExtension( file ).ToLower();
-				foreach ( string extc in fileExtensionFilter )
-				{
-					if ( extc.ToLower() == ext )
-						return true;
-				}
-				return false;
-			}
-			return true;
-		}
-
-		List<string> BuildFileList( List<string> fileExtensionFilter, List<string> inputFoldersAndFiles )
-		{
-			if ( !storage.ExpandFileNames )
-				return inputFoldersAndFiles;
-
-			List<string> output = new List<string>();
-			foreach ( string inputFile in inputFoldersAndFiles )
-			{
-				if ( System.IO.Directory.Exists( inputFile ) )
-				{
-					foreach ( string subFile in System.IO.Directory.GetFiles( inputFile ) )
-					{
-						if ( IsValidInputFile( fileExtensionFilter, subFile ) )
-							output.Add( subFile );
-					}
-				}
-				else if ( System.IO.File.Exists( inputFile ) )
-				{
-					if ( IsValidInputFile( fileExtensionFilter, inputFile ) )
-						output.Add( inputFile );
-				}
-			}
-			return output;
-		}
-
-
 		string JoinWithQuotes( string[] str )
 		{
 			return @"""" + string.Join( @""" """, str ) + @"""";
 		}
 
 
-		private void OnClick( dynamic item, List<string> filesList )
+		private void OnClick( InfoStorageAttribute storage, dynamic item, List<string> filesList )
 		{
 			string action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
 
@@ -124,80 +74,6 @@ namespace windowsexplorermenu_clr
 			}
 		}
 
-		//IntPtr subMenu = CreateSubMenu();
-		//InsertMenuItemIntoSubMenu( subMenu, @"Create audio sprite", 1, delegate( List<string> selectedFiles ) { Action.DoAction( selectedFiles, false ); } );
-		//InsertMenuItemIntoSubMenu( subMenu, @"Convert file(s) to mp3/ogg", 2, delegate( List<string> selectedFiles ) { Action.DoAction( selectedFiles, true ); } );
-		//InsertSeperator( 3 );
-		//InsertSubMenu( subMenu, @"Inspired Audio Tool", 4, LoadBitmap() );
-		//InsertSeperator( 5 );
-
-		private void AddChildren( IntPtr menu, dynamic children, List<string> selectedFiles, bool isRoot )
-		{
-			for ( var i=0; i<children.Length; ++i )
-			{
-				dynamic item = children[ i ];
-				string name = Util.IsJsonProperty( item, "name" ) ? (string)item.name : "New Menu Item";
-				
-				// embed image into assembly and reference that
-				System.Drawing.Bitmap bmp = null;
-				IntPtr subMenu = IntPtr.Zero;
-
-				if ( Util.IsJsonProperty( item, "imageResource" ) )
-				{
-					var resources = this.GetType().Assembly.GetManifestResourceStream( (string)item.imageResource + ".resources" );
-					var rr = new System.Resources.ResourceReader( resources );
-					string resourceType;
-					byte[] resourceData;
-					rr.GetResourceData( "image.bmp", out resourceType, out resourceData );
-					// For some reason the resource compiler adds 4 bytes to the start of our data.
-					bmp = new System.Drawing.Bitmap( new System.IO.MemoryStream( resourceData, 4, resourceData.Length-4 ) );
-				}
-				if ( Util.IsJsonProperty( item, "children" ) )
-				{
-					subMenu = CreateSubMenu();
-					AddChildren( subMenu, item.children, selectedFiles, false );
-				}
-
-				int position = i+1;
-				if ( isRoot )
-				{
-					position = Util.IsJsonProperty( item, "position" ) ? (int)item.position : position;
-				}
-				if ( menu == IntPtr.Zero )
-				{
-					// root element
-					if ( subMenu == IntPtr.Zero )
-					{
-						uint id = InsertMenuItem( name, position, ( List<string> s ) => { OnClick( item, selectedFiles ); } );
-						if ( bmp != null )
-						{
-							SetMenuItemBitmap( id, bmp );
-						}
-					}
-					else
-					{
-						InsertSubMenu( subMenu, name, position, bmp );
-					}
-				}
-				else
-				{
-					// sub menu
-					if ( subMenu == IntPtr.Zero )
-					{
-						InsertMenuItemIntoSubMenu( menu, name, position, bmp, ( List<string> s ) => { OnClick( item, selectedFiles ); } );
-					}
-					else
-					{
-						uint id = InsertSubMenuIntoSubMenu( menu, subMenu, name, position );
-						if ( bmp != null )
-						{
-							SetMenuItemBitmap( id, bmp );
-						}
-					}
-				}
-			}
-		}
-
 
 		protected override string GetVerbString()
 		{
@@ -211,114 +87,18 @@ namespace windowsexplorermenu_clr
 
 		protected override void OnBuildMenu( List<string> list )
 		{
-			try
-			{
-				Assembly assem = this.GetType().Assembly;
-				this.storage = (AssociationStorageAttribute)assem.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
+			Assembly assem = this.GetType().Assembly;
+			var storage = (InfoStorageAttribute)assem.GetCustomAttributes( typeof( InfoStorageAttribute ), true )[ 0 ];
 
-				// filter file extensions if required
-				var filter = new List<string>( storage.FileExtensionFilter );
-				var filesList = BuildFileList( filter, list );
-
-				if ( filesList.Count > 0 )
-				{
-					string menuFormatJson = storage.MenuFormat;
-
-					var jsonReader = new JsonFx.Json.JsonReader();
-					dynamic menuFormatObject = jsonReader.Read<dynamic>( menuFormatJson );
-					dynamic menuFormatObjectChildren = menuFormatObject.children;
-
-					AddChildren( IntPtr.Zero, menuFormatObjectChildren, filesList, true );
-				}
-			}
-			catch ( Exception e )
-			{
-				MessageBox.Show( e.Message + "\r\n\r\n" + e.StackTrace, "Error whilst creating menu" );
-			}
+			MenuBuilder.BuildMenu( assem, this, storage, list, ( dynamic item, List<string> s ) => { OnClick( storage, item, s ); } );
 		}
-	}
-
-
-	// Custom attribute to store the file association data at the assembly level.
-	public class AssociationStorageAttribute : Attribute
-	{
-		public Platform.ComRegisterClass.RightClickContextMenuOptions[] Association
-		{
-			private set;
-			get;
-		}
-		public string MenuFormat
-		{
-			private set;
-			get;
-		}
-		public string ActionPath
-		{
-			private set;
-			get;
-		}
-		public string Name
-		{
-			private set;
-			get;
-		}
-		public string[] FileExtensionFilter
-		{
-			private set;
-			get;
-		}
-		public bool ExpandFileNames
-		{
-			private set;
-			get;
-		}
-		public AssociationStorageAttribute( string name, string actionPath, string menuFormat, Platform.ComRegisterClass.RightClickContextMenuOptions[] _at, string[] fileExtensionFilter, bool expandFileNames )
-		{
-			this.Name = name;
-			this.ActionPath = actionPath;
-			this.MenuFormat = menuFormat;
-			this.Association = _at;
-			this.FileExtensionFilter = fileExtensionFilter;
-			this.ExpandFileNames = expandFileNames;
-		}
-
 	}
 
 
 	public class ExplorerMenuInterface
 	{
 
-		public static byte[] CreateKeyPair( string containerName, int keySize )
-		{
-			if ( ( keySize % 8 ) != 0 )
-			{
-				throw new CryptographicException( "Invalid key size. Valid size is 384 to 16384 mod 8.  Default 1024." );
-			}
-
-			CspParameters parms = new CspParameters();
-			parms.KeyContainerName = containerName;
-			parms.KeyNumber = 2;
-			RSACryptoServiceProvider provider = new RSACryptoServiceProvider( keySize, parms );
-			byte[] array = provider.ExportCspBlob( !provider.PublicOnly );
-			return array;
-		}
-
-
-		private static void AddAttribute( dynamic targetType, Type attributeType, params object[] constructorParams )
-		{
-			Type[] ctorParams = new Type[ constructorParams.Length ];
-			int index = 0;
-			foreach ( object o in constructorParams )
-			{
-				ctorParams[ index++ ] = o.GetType();
-			}
-			ConstructorInfo classCtorInfo = attributeType.GetConstructor( ctorParams );
-			CustomAttributeBuilder myCABuilder = new CustomAttributeBuilder( classCtorInfo, constructorParams );
-			targetType.SetCustomAttribute( myCABuilder );
-		}
-
-
-		private Platform.ComRegisterClass.RightClickContextMenuOptions[] StringNameToAssociationType( string[] names )
+		static Platform.ComRegisterClass.RightClickContextMenuOptions[] StringNameToAssociationType( string[] names )
 		{
 			List<Platform.ComRegisterClass.RightClickContextMenuOptions> list = new List<Platform.ComRegisterClass.RightClickContextMenuOptions>();
 
@@ -361,49 +141,6 @@ namespace windowsexplorermenu_clr
 		}
 
 
-		public void Create( string name, Guid guid, string dllPath, IDictionary<string, object> resourceList, string actionPath,
-			dynamic menuFormat, Platform.ComRegisterClass.RightClickContextMenuOptions[] association, string[] fileExtensionFilter, bool expandFileNames )
-		{
-			AssemblyName myAsmName = new AssemblyName( System.IO.Path.GetFileNameWithoutExtension( dllPath ) );
-			myAsmName.CodeBase = String.Concat( "file:///", System.IO.Path.GetDirectoryName( dllPath ) );
-			myAsmName.CultureInfo = new System.Globalization.CultureInfo( "en-US" );
-			myAsmName.KeyPair = new StrongNameKeyPair( CreateKeyPair( System.IO.Path.GetFileNameWithoutExtension( dllPath ), 1024 ) );
-			myAsmName.Flags = AssemblyNameFlags.PublicKey;
-			myAsmName.VersionCompatibility = AssemblyVersionCompatibility.SameProcess;
-			myAsmName.HashAlgorithm = AssemblyHashAlgorithm.SHA1;
-			myAsmName.Version = new Version( "1.0.0.0" );
-
-			AssemblyBuilder myAsmBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly( myAsmName, AssemblyBuilderAccess.Save, System.IO.Path.GetDirectoryName( dllPath ) );
-			ModuleBuilder myModBuilder = myAsmBuilder.DefineDynamicModule( "MyModule", System.IO.Path.GetFileName( dllPath ) );
-			TypeBuilder myTypeBuilder = myModBuilder.DefineType( "MyType", TypeAttributes.Public, typeof( MenuExtension ) );
-
-			var menuFormatWriter = new JsonFx.Json.JsonWriter();
-			var menuFormatJson = menuFormatWriter.Write( menuFormat );
-
-			AddAttribute( myTypeBuilder, typeof( ComVisibleAttribute ), true );
-			AddAttribute( myTypeBuilder, typeof( GuidAttribute ), guid.ToString() );
-			AddAttribute( myAsmBuilder, typeof( GuidAttribute ), guid.ToString() );
-			AddAttribute( myAsmBuilder, typeof( AssociationStorageAttribute ), name, actionPath, menuFormatJson, association, fileExtensionFilter, expandFileNames );
-
-			// embed all images found in the menu into the assembly
-			foreach ( string keyname in resourceList.Keys )
-			{
-				string filename = (string)resourceList[ keyname ];
-				System.Drawing.Image image = System.Drawing.Image.FromFile( filename );
-				System.IO.MemoryStream memStream = new System.IO.MemoryStream();
-				image.Save( memStream, System.Drawing.Imaging.ImageFormat.Bmp );
-				byte[] rawdata = memStream.ToArray();
-				System.Resources.IResourceWriter rw = myModBuilder.DefineResource( keyname + ".resources", "description", ResourceAttributes.Public );
-				rw.AddResource( "image.bmp", rawdata );
-			}
-
-			myTypeBuilder.CreateType();
-			myModBuilder.CreateGlobalFunctions();
-
-			myAsmBuilder.Save( System.IO.Path.GetFileName( dllPath ) );
-		}
-
-
 		Assembly OnResolve( object sender, ResolveEventArgs args )
 		{
 			var requestedAssembly = new AssemblyName( args.Name );
@@ -430,7 +167,7 @@ namespace windowsexplorermenu_clr
 			bool expandFileNames = (bool)input.expandFileNames;
 
 			Guid guid = guidString.Length > 0 ? new System.Guid( guidString ) : System.Guid.NewGuid();
-			Create( name, guid, dllPath, resourceList, actionPath, menuFormat, association, fileExtensionFilter, expandFileNames );
+			CreateAssembly.Create( name, guid, dllPath, resourceList, actionPath, menuFormat, association, fileExtensionFilter, expandFileNames );
 
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			Platform.ComRegisterClass.RegisterShellRightClickContextMenu( name, "{" + guid.ToString() + "}", association );
@@ -446,7 +183,7 @@ namespace windowsexplorermenu_clr
 			AppDomain.CurrentDomain.AssemblyResolve += ( sender, args ) => OnResolve( sender, args );
 			Assembly assembly = Assembly.LoadFile( dllPath );
 
-			var associationAttrib = (AssociationStorageAttribute)assembly.GetCustomAttributes( typeof( AssociationStorageAttribute ), true )[ 0 ];
+			var associationAttrib = (InfoStorageAttribute)assembly.GetCustomAttributes( typeof( InfoStorageAttribute ), true )[ 0 ];
 			Platform.ComRegisterClass.RightClickContextMenuOptions[] associationArray = associationAttrib.Association;
 			var guidAttrib = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute),true)[0];
 

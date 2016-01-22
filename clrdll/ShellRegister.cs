@@ -201,35 +201,35 @@ namespace Platform
 		/// <summary>
 		/// Call this within OnBuildMenu() to build menu
 		/// </summary>
-		protected uint InsertMenuItem( string textName, int position, RightClickActionDelegate actionDelegate )
+		public uint InsertMenuItem( string textName, int position, RightClickActionDelegate actionDelegate )
 		{
 			return InsertMenuItemPrivate( mMenuHandle, textName, -1, actionDelegate );
 		}
 
-		
-		protected IntPtr CreateSubMenu()
+
+		public IntPtr CreateSubMenu()
 		{
 			return DllImports.CreatePopupMenu();
 		}
 
 
-		protected void DestroySubMenu( IntPtr menu )
+		public void DestroySubMenu( IntPtr menu )
 		{
 			DllImports.DestroyMenu( menu );
 		}
 
 
-		protected uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, RightClickActionDelegate actionDelegate )
+		public uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, RightClickActionDelegate actionDelegate )
 		{
 			return InsertMenuItemPrivate( subMenu, textName, position, actionDelegate );
 		}
 
-		protected uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, Bitmap bitmap, RightClickActionDelegate actionDelegate )
+		public uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, Bitmap bitmap, RightClickActionDelegate actionDelegate )
 		{
 			return InsertMenuItemIntoSubMenu( subMenu, textName, position, bitmap, bitmap, actionDelegate );
 		}
 
-		protected uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, Bitmap uncheckedBitmap, Bitmap checkedBitmap, RightClickActionDelegate actionDelegate )
+		public uint InsertMenuItemIntoSubMenu( IntPtr subMenu, string textName, int position, Bitmap uncheckedBitmap, Bitmap checkedBitmap, RightClickActionDelegate actionDelegate )
 		{
 			uint id = InsertMenuItemPrivate( subMenu, textName, position, actionDelegate );
 			if ( id != 0 )
@@ -240,24 +240,24 @@ namespace Platform
 		}
 
 
-		protected uint InsertSeperator( int position )
+		public uint InsertSeperator( int position )
 		{
 			return InsertSeperatorPrivate( mMenuHandle, position );
 		}
 
-		protected uint InsertSeperatorIntoSubMenu( IntPtr subMenu, int position )
+		public uint InsertSeperatorIntoSubMenu( IntPtr subMenu, int position )
 		{
 			return InsertSeperatorPrivate( subMenu, position );
 		}
 
 
-		protected uint InsertSubMenu( IntPtr subMenu, string textName, int position, Bitmap bitmap )
+		public uint InsertSubMenu( IntPtr subMenu, string textName, int position, Bitmap bitmap )
 		{
 			return InsertSubMenu( subMenu, textName, position, bitmap, bitmap );
 		}
 
 
-		protected uint InsertSubMenu( IntPtr subMenu, string textName, int position, Bitmap uncheckedBitmap, Bitmap checkedBitmap )
+		public uint InsertSubMenu( IntPtr subMenu, string textName, int position, Bitmap uncheckedBitmap, Bitmap checkedBitmap )
 		{
 			uint id = InsertSubMenu( subMenu, textName, position );
 			if ( id != 0 )
@@ -268,14 +268,14 @@ namespace Platform
 		}
 
 
-		protected uint InsertSubMenu( IntPtr subMenu, string textName, int position )
+		public uint InsertSubMenu( IntPtr subMenu, string textName, int position )
 		{
 			return InsertSubMenuIntoSubMenu( mMenuHandle, subMenu, textName, position );
 		}
 
 
 
-		protected uint InsertSubMenuIntoSubMenu( IntPtr menu, IntPtr subMenu, string textName, int position )
+		public uint InsertSubMenuIntoSubMenu( IntPtr menu, IntPtr subMenu, string textName, int position )
 		{
 			MENUITEMINFO mii = new MENUITEMINFO();
 			mii.cbSize = (uint)Marshal.SizeOf( typeof( MENUITEMINFO ) );
@@ -301,7 +301,7 @@ namespace Platform
 		}
 
 
-		protected uint InsertSeperatorPrivate( IntPtr subMenu, int position )
+		public uint InsertSeperatorPrivate( IntPtr subMenu, int position )
 		{
 			MENUITEMINFO mii = new MENUITEMINFO();
 			mii.cbSize = ( uint )Marshal.SizeOf( typeof( MENUITEMINFO ) );
@@ -325,22 +325,22 @@ namespace Platform
 		}
 
 
-		protected bool SetSubMenuItemBitmap( IntPtr menuHandle, uint id, Bitmap bitmap )
+		public bool SetSubMenuItemBitmap( IntPtr menuHandle, uint id, Bitmap bitmap )
 		{
 			return SetMenuItemBitmapPrivate( menuHandle, id, bitmap, bitmap );
 		}
 
-		protected bool SetSubMenuItemBitmap( IntPtr menuHandle, uint id, Bitmap uncheckBitmap, Bitmap checkedBitmap )
+		public bool SetSubMenuItemBitmap( IntPtr menuHandle, uint id, Bitmap uncheckBitmap, Bitmap checkedBitmap )
 		{
 			return SetMenuItemBitmapPrivate( menuHandle, id, uncheckBitmap, checkedBitmap );
 		}
 
-		protected bool SetMenuItemBitmap( uint id, Bitmap uncheckBitmap, Bitmap checkedBitmap )
+		public bool SetMenuItemBitmap( uint id, Bitmap uncheckBitmap, Bitmap checkedBitmap )
 		{
 			return SetMenuItemBitmapPrivate( mMenuHandle, id, uncheckBitmap, checkedBitmap );
 		}
 
-		protected bool SetMenuItemBitmap( uint id, Bitmap bitmap )
+		public bool SetMenuItemBitmap( uint id, Bitmap bitmap )
 		{
 			return SetMenuItemBitmapPrivate( mMenuHandle, id, bitmap, bitmap );
 		}
