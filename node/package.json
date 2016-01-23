@@ -1,7 +1,7 @@
 {
-  "name": "node-win32shellmenu",
+  "name": "win32shellmenu",
   "version": "0.1.0",
-  "description": "Allows a node.js application to register windows explorer context menu shell extension",
+  "description": "Allows a node.js application to register a windows explorer context menu shell extension",
   "main": "index.js",
   "scripts": {
     "test": "mocha"

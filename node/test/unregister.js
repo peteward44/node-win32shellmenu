@@ -13,7 +13,7 @@ describe('unregister', function () {
 	it('unregister', function ( done ) {
 		var dllname = path.join( __dirname, 'mydll.dll' );
 
-		explorerMenu.unregister( dllname, function( err, stdo, stde ) {
+		explorerMenu.unregister( dllname, function( err ) {
 			if ( err ) {
 				console.error( err );
 			}
