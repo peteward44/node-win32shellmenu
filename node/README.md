@@ -21,7 +21,9 @@ var menu = [
 		// specify an action to occur when clicked - will execute myjs.js with the argument arg1
 		name: "Dynamic menu test - item 2",
 		action: "myjs.js",
-		args: [ "arg1" ]
+		args: [ "arg1" ],
+		// can be "remain", "hidden" or "close" -> "remain" keeps the cmd window open after command has completed, "hidden" doesn't open a cmd window in the first place, and "close" closes the cmd window on completion
+		style: "remain"
 	},
 	{
 		name: "Dynamic menu test - item 3",
