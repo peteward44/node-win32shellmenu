@@ -43,7 +43,7 @@ function register( dllname, menu, options, callback ) {
 		methodName: 'Register'
 	});
 	
-	var dll = path.normalize( path.resolve( dllname ) );
+	var dll = path.normalize( path.resolve( __dirname, dllname ) );
 	// TODO: copy options object before modifying it
 	// TODO: sanity check parameters
 	options.dllpath = dll;
