@@ -56,9 +56,10 @@ Unregistering
 
 var shellmenu = require( 'win32shellmenu' );
 var dllname = 'mydll.dll';
-shellmenu.unregister( dllname, function( err ) {
-	
-} );
+// For "restartExplorer" to work correctly, process.exit() must be called, terminating the process.
+// Set to false if you want to restart explorer yourself
+// Callback will only be executed if restartExplorer is set to false
+shellmenu.unregister( dllname, { restartExplorer: true }, function( err ) {} );
 
 ```
 

@@ -4,7 +4,7 @@ var fs = require( 'fs-extra' );
 var path = require( 'path' );
 var edge = require( 'edge' );
 var appRoot = require('app-root-path');
-var exec = require( 'child_process' ).exec;
+var spawn = require( 'child_process' ).spawn;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
 var ourJsonFxDllPath = path.join( __dirname, 'dll', 'JsonFx.dll' );
@@ -82,7 +82,7 @@ function register( dllname, menu, options, callback ) {
 exports.register = register;
 
 
-function unregister( dllname, callback ) {	
+function unregister( dllname, options, callback ) {	
 	var clrMethod = edge.func({
 		assemblyFile: ourDllPath,
 		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
@@ -93,10 +93,27 @@ function unregister( dllname, callback ) {
 		dllpath: path.normalize( path.resolve( dllname ) )
 	};
 	
+	options = options || {};
+	options.restartExplorer = options.restartExplorer === undefined ? true : options.restartExplorer;
+	
 	clrMethod( params, function( err ) {
-		callback( err );
+		if ( options.restartExplorer ) {
+			var proc = spawn( "cmd.exe", [ "/C", path.join( __dirname, "restart_explorer.cmd" ) ], { detached: true, stdio: 'ignore' } );
+			//proc.stdout.pipe( process.stdout );
+			//proc.stderr.pipe( process.stderr );
+			proc.on( 'exit', function( err2 ) {
+				// Can't find a way of restarting explorer without requiring to call process.exit.
+				setTimeout( function() { process.exit(); }, 10000 );
+			} );
+		} else {
+			if ( callback ) {
+				callback( err );
+			}
+		}
 	} );
 }
 
 exports.unregister = unregister;
+
+
 
