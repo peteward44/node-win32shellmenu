@@ -29,6 +29,9 @@ function parseMenuForImagesRecurse( options, children ) {
 			}
 			child.imageResource = resourceName;
 		}
+		if ( child.action ) {
+			child.action = path.resolve( options.actionpath, child.action );
+		}
 		if ( child.children ) {
 			parseMenuForImagesRecurse( options, child.children );
 		}
