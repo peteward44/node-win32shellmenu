@@ -4,6 +4,7 @@ var fs = require( 'fs-extra' );
 var path = require( 'path' );
 var edge = require( 'edge' );
 var appRoot = require('app-root-path');
+var wincmd = require('node-windows');
 var spawn = require( 'child_process' ).spawn;
 
 var ourDllPath = path.join( __dirname, 'dll', 'windowsexplorermenu-clr.dll' );
@@ -39,80 +40,106 @@ function parseMenuForImagesRecurse( options, children ) {
 }
 
 
-function register( dllname, menu, options, callback ) {
-	var clrMethod = edge.func({
-		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
-		methodName: 'Register'
+function check( callback ) {
+	wincmd.isAdminUser(function(isAdmin){
+		if ( !isAdmin ) {
+			console.error( "This command must be ran with admin priviledges" );
+			return callback( false );
+		}
+		
+		return callback( true );
 	});
-	
-	var dll = path.normalize( path.resolve( __dirname, dllname ) );
-	// TODO: copy options object before modifying it
-	// TODO: sanity check parameters
-	options.dllpath = dll;
-	if ( !Array.isArray( menu ) ) {
-		menu = [ menu ];
-	}
-	options.name = options.name || ( path.basename( dllname, path.extname( dllname ) ) );
-	options.actionpath = ( options.actionpath || appRoot.toString() ).toString();
-	options.menu = { children: menu };
-	options.resources = options.resources || {};
-	options.association = options.association || [ 'all' ];
-	options.fileExtensionFilter = options.fileExtensionFilter || [];
-	options.guid = options.guid || '';
-	options.expandFileNames = options.expandFileNames === undefined ? true : options.expandFileNames;
-	
-	if ( !Array.isArray( options.association ) ) {
-		options.association = [ options.association ];
-	}
-	if ( !Array.isArray( options.associations ) ) {
-		options.associations = [ options.associations ];
-	}
-	if ( !Array.isArray( options.fileExtensionFilter ) ) {
-		options.fileExtensionFilter = [ options.fileExtensionFilter ];
-	}
-	parseMenuForImagesRecurse( options, options.menu.children );
-	
-	fs.ensureDirSync( path.dirname( dll ) );
-	fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
-	fs.copySync( ourJsonFxDllPath, path.join( path.dirname( dll ), path.basename( ourJsonFxDllPath ) ) );
+}
 
-	clrMethod( options, function( err ) {
-		callback( err );
+
+function register( dllname, menu, options, callback ) {
+
+	check( function( valid ) {
+		if ( !valid ) {
+			return callback();
+		}
+		
+		var clrMethod = edge.func({
+			assemblyFile: ourDllPath,
+			typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
+			methodName: 'Register'
+		});
+		
+		var dll = path.normalize( path.resolve( __dirname, dllname ) );
+		// TODO: copy options object before modifying it
+		// TODO: sanity check parameters
+		options.dllpath = dll;
+		if ( !Array.isArray( menu ) ) {
+			menu = [ menu ];
+		}
+		options.name = options.name || ( path.basename( dllname, path.extname( dllname ) ) );
+		options.actionpath = ( options.actionpath || appRoot.toString() ).toString();
+		options.menu = { children: menu };
+		options.resources = options.resources || {};
+		options.association = options.association || [ 'all' ];
+		options.fileExtensionFilter = options.fileExtensionFilter || [];
+		options.guid = options.guid || '';
+		options.expandFileNames = options.expandFileNames === undefined ? true : options.expandFileNames;
+		
+		if ( !Array.isArray( options.association ) ) {
+			options.association = [ options.association ];
+		}
+		if ( !Array.isArray( options.associations ) ) {
+			options.associations = [ options.associations ];
+		}
+		if ( !Array.isArray( options.fileExtensionFilter ) ) {
+			options.fileExtensionFilter = [ options.fileExtensionFilter ];
+		}
+		parseMenuForImagesRecurse( options, options.menu.children );
+		
+		fs.ensureDirSync( path.dirname( dll ) );
+		fs.copySync( ourDllPath, path.join( path.dirname( dll ), path.basename( ourDllPath ) ) );
+		fs.copySync( ourJsonFxDllPath, path.join( path.dirname( dll ), path.basename( ourJsonFxDllPath ) ) );
+
+		clrMethod( options, function( err ) {
+			callback( err );
+		} );
 	} );
 }
 
 exports.register = register;
 
 
-function unregister( dllname, options, callback ) {	
-	var clrMethod = edge.func({
-		assemblyFile: ourDllPath,
-		typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
-		methodName: 'Unregister'
-	});
-	
-	var params = {
-		dllpath: path.normalize( path.resolve( dllname ) )
-	};
-	
-	options = options || {};
-	options.restartExplorer = options.restartExplorer === undefined ? true : options.restartExplorer;
-	
-	clrMethod( params, function( err ) {
-		if ( options.restartExplorer ) {
-			var proc = spawn( "cmd.exe", [ "/C", path.join( __dirname, "restart_explorer.cmd" ) ], { detached: true, stdio: 'ignore' } );
-			//proc.stdout.pipe( process.stdout );
-			//proc.stderr.pipe( process.stderr );
-			proc.on( 'exit', function( err2 ) {
-				// Can't find a way of restarting explorer without requiring to call process.exit.
-				setTimeout( function() { process.exit(); }, 10000 );
-			} );
-		} else {
-			if ( callback ) {
-				callback( err );
-			}
+function unregister( dllname, options, callback ) {
+
+	check( function( valid ) {
+		if ( !valid ) {
+			return callback();
 		}
+
+		var clrMethod = edge.func({
+			assemblyFile: ourDllPath,
+			typeName: 'windowsexplorermenu_clr.ExplorerMenuInterface',
+			methodName: 'Unregister'
+		});
+		
+		var params = {
+			dllpath: path.normalize( path.resolve( dllname ) )
+		};
+		
+		options = options || {};
+		options.restartExplorer = options.restartExplorer === undefined ? true : options.restartExplorer;
+		
+		clrMethod( params, function( err ) {
+			if ( options.restartExplorer ) {
+				var proc = spawn( "cmd.exe", [ "/C", path.join( __dirname, "restart_explorer.cmd" ) ], { detached: true, stdio: 'ignore' } );
+				//proc.stdout.pipe( process.stdout );
+				//proc.stderr.pipe( process.stderr );
+				proc.on( 'exit', function( err2 ) {
+					// Can't find a way of restarting explorer without requiring to call process.exit.
+					setTimeout( function() { process.exit(); }, 10000 );
+				} );
+			} else {
+				if ( callback ) {
+					callback( err );
+				}
+			}
+		} );
 	} );
 }
 
