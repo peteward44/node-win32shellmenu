@@ -55,7 +55,7 @@ namespace windowsexplorermenu_clr
 				if ( filesList.Count > 0 )
 				{
 					string[] args = Util.IsJsonProperty( item, "args" ) ? Util.ObjectToStringArray( (object[])item.args ) : new string[ 0 ];
-					var style = Util.IsJsonProperty( item, "style" ) ? (string)item.remain : "remain";
+					var style = Util.IsJsonProperty( item, "style" ) ? (string)item.style : "remain";
 
 					string type = style == "remain" ? "/K" : "/C";
 					string argsString = args.Length > 0 ? JoinWithQuotes( args ) : "";
