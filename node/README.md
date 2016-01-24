@@ -20,7 +20,7 @@ var menu = [
 	{
 		// specify an action to occur when clicked - will execute myjs.js with the argument arg1
 		name: "Dynamic menu test - item 2",
-		action: "js/myjs.js",
+		action: "myjs.js",
 		args: [ "arg1" ]
 	},
 	{
@@ -39,6 +39,7 @@ var menu = [
 ];
 
 var options = {
+	actionPath: __dirname, // Root folder which the script specified by "action" will be executed from - most applications will want this set to __dirname if they are being installed globally
 	association: [ 'files', 'folders' ], // types of shell item to bind to - this can be either 'all', 'files', 'folders', 'imagefiles', 'videofiles', 'desktopbackground', 'drive' or 'printers'
 	fileExtensionFilter: [ '.md' ] // filter by only these file extensions
 };
