@@ -49,8 +49,9 @@ namespace windowsexplorermenu_clr
 		private void OnClick( InfoStorageAttribute storage, dynamic item, List<string> filesList )
 		{
 			string action = Util.IsJsonProperty( item, "action" ) ? (string)item.action : "";
+			string cmd = Util.IsJsonProperty( item, "cmd" ) ? (string)item.cmd : "";
 
-			if ( action.Length > 0 )
+			if ( action.Length > 0 || cmd.Length > 0 )
 			{
 				if ( filesList.Count > 0 )
 				{
@@ -60,7 +61,15 @@ namespace windowsexplorermenu_clr
 					string type = style == "remain" ? "/K" : "/C";
 					string argsString = args.Length > 0 ? JoinWithQuotes( args ) : "";
 					string filesString = filesList.Count > 0 ? JoinWithQuotes( filesList.ToArray() ) : "";
-					string fullArgs = type + @" node """ + action + @""" " + argsString + " " + filesString;
+					string fullArgs = "";
+					if ( action.Length > 0 )
+					{
+						fullArgs = type + @" node """ + action + @""" " + argsString + " " + filesString;
+					}
+					else if ( cmd.Length > 0 )
+					{
+						fullArgs = type + @"""" + cmd + @""" " + argsString + " " + filesString;
+					}
 
 					System.Diagnostics.Process process = new System.Diagnostics.Process();
 					System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();

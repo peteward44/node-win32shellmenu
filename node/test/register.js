@@ -35,6 +35,10 @@ describe('register', function () {
 						name: "Sub menu item 2"
 					}
 				]
+			},
+			{
+				name: "Dynamic menu test - item 3 - cmd",
+				cmd: "echo It worked!"
 			}
 		];
 		var options = {
