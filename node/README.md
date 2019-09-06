@@ -1,4 +1,7 @@
 # win32shellmenu
+
+***This project is no longer maintained***
+
 Allows a node.js application to register a windows explorer context menu shell extension.
 
 Intended to be used as part of the npm install / uninstall script.
